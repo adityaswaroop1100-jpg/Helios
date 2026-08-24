@@ -1,14 +1,15 @@
 // SolarSense AI Model & Forecast API Data Provider
+import { XGBOOST_METADATA } from './xgboostModel';
 
 export const generate24HourForecast = () => {
   const hours = [];
-  const baseCapacityKW = 48.0; // 48 kW total array peak capacity (4x3 grid of 4kW strings)
+  const baseCapacityKW = 48.0;
 
   for (let h = 0; h < 24; h++) {
     let solarFactor = 0;
     if (h >= 6 && h <= 18) {
       solarFactor = Math.sin(((h - 6) / 12) * Math.PI);
-      const cloudDip = h === 14 ? 0.65 : (h === 11 ? 0.95 : 1.0);
+      const cloudDip = h === 14 ? 0.85 : (h === 11 ? 0.95 : 1.0);
       solarFactor = Math.pow(solarFactor, 1.3) * cloudDip;
     }
 
@@ -19,9 +20,7 @@ export const generate24HourForecast = () => {
     const irradiance = Math.round(solarFactor * 980);
     const ambientTemp = 20 + Math.sin(((h - 8) / 12) * Math.PI) * 12;
     const panelTemp = Number((ambientTemp + solarFactor * 18).toFixed(1));
-    const cloudCover = h === 14 ? 45 : (h >= 6 && h <= 18 ? 12 : 5);
-
-    const isAnomaly = h === 14;
+    const cloudCover = h === 14 ? 25 : (h >= 6 && h <= 18 ? 10 : 5);
 
     hours.push({
       hour: h,
@@ -33,46 +32,94 @@ export const generate24HourForecast = () => {
       ambientTemp: Number(ambientTemp.toFixed(1)),
       panelTemp,
       cloudCover,
-      isAnomaly,
-      anomalySeverity: isAnomaly ? 'Medium' : 'None',
-      anomalyDescription: isAnomaly ? 'Transient cloud cover caused 35% output drop below P10 confidence threshold' : null,
+      isAnomaly: false,
+      anomalySeverity: 'None',
+      anomalyDescription: null,
     });
   }
 
   return hours;
 };
 
-// Calculate exact output for fractional hour (e.g. 10.183 for 10:11 AM)
-export const getExactOutputForFractionalHour = (fractionalHour) => {
-  const baseCapacityKW = 48.0;
-  let solarFactor = 0;
+/**
+ * Interpolate output dynamically from active hourly series at fractional hour
+ */
+export const getOutputFromHourlyData = (hourlyData, fractionalHour) => {
+  if (!hourlyData || hourlyData.length === 0) return { predictedKW: 0, irradiance: 0, solarFactor: 0 };
+  const h = Math.floor(fractionalHour) % 24;
+  const nextH = (h + 1) % 24;
+  const frac = fractionalHour - Math.floor(fractionalHour);
 
-  if (fractionalHour >= 6 && fractionalHour <= 18) {
-    solarFactor = Math.sin(((fractionalHour - 6) / 12) * Math.PI);
-    solarFactor = Math.pow(solarFactor, 1.3);
-  }
+  const currPoint = hourlyData[h] || { predictedKW: 0, irradiance: 0 };
+  const nextPoint = hourlyData[nextH] || { predictedKW: 0, irradiance: 0 };
 
-  const predictedKW = Number((baseCapacityKW * solarFactor).toFixed(2));
-  const irradiance = Math.round(solarFactor * 980);
+  const predictedKW = Number((currPoint.predictedKW * (1 - frac) + nextPoint.predictedKW * frac).toFixed(2));
+  const irradiance = Math.round((currPoint.irradiance || 0) * (1 - frac) + (nextPoint.irradiance || 0) * frac);
+  const solarFactor = Math.min(1.0, Math.max(0, predictedKW / 48.0));
 
   return {
     predictedKW,
     irradiance,
-    solarFactor
+    solarFactor,
+  };
+};
+
+export const getRecommendations = (currentHourData = {}, faultedPanels = {}) => {
+  const kw = currentHourData.predictedKW ?? 0;
+  const faultCount = Object.keys(faultedPanels).length;
+  const isAnomaly = currentHourData.isAnomaly || faultCount > 0;
+
+  if (isAnomaly) {
+    const desc = currentHourData.anomalyDescription
+      || (faultCount > 0 ? `${faultCount} module strings experiencing sub-optimal performance or open-circuit fault` : 'Irradiance imbalance detected');
+    return {
+      type: 'ANOMALY_WARNING',
+      title: faultCount > 0 ? `String Fault Detected (${faultCount} Modules Affected)` : 'Telemetry Anomaly Detected',
+      message: `${desc}. Dispatching bypass isolation and SCADA field diagnostics.`,
+      action: 'ISOLATE FAULT & RUN DIAGNOSTICS',
+    };
+  }
+
+  if (kw > 25) {
+    return {
+      type: 'PEAK_GENERATION',
+      title: `Peak Solar Generation Phase Active (${kw.toFixed(1)} kW)`,
+      message: `Array operating at high irradiance (${currentHourData.irradiance || 850} W/m²). Surplus power (>25 kW) recommended for Battery Energy Storage dispatch.`,
+      action: 'ROUTE SURPLUS TO BATTERY STORAGE',
+    };
+  }
+
+  if (kw > 5) {
+    return {
+      type: 'RAMP_PHASE',
+      title: `Nominal Generation Phase (${kw.toFixed(1)} kW)`,
+      message: `Array generating at ${kw.toFixed(1)} kW with optimal MPPT tracking and cell temperature ${currentHourData.panelTemp || 45}°C.`,
+      action: 'OPTIMIZE MPPT TRACKER ANGLE',
+    };
+  }
+
+  return {
+    type: 'NIGHT_MODE',
+    title: 'Standby / Low Irradiance Mode',
+    message: 'Array in nocturnal stow position. Inverter in standby mode with minimal parasitic load.',
+    action: 'INITIATE NOCTURNAL HEALTH CHECK',
   };
 };
 
 export const getFeatureImportanceData = () => [
-  { feature: 'Solar Irradiance (W/m²)', importance: 0.52, category: 'Atmospheric' },
-  { feature: 'Hour of Day (Zenith Angle)', importance: 0.24, category: 'Astronomical' },
-  { feature: 'Cloud Cover (%)', importance: 0.14, category: 'Atmospheric' },
-  { feature: 'Panel Temperature (°C)', importance: 0.07, category: 'Hardware' },
-  { feature: 'Relative Humidity (%)', importance: 0.03, category: 'Environmental' },
+  { feature: 'Solar Zenith Angle (Deg)', importance: 0.49, category: 'Astronomical' },
+  { feature: 'Global Horizontal Irradiance (GHI)', importance: 0.46, category: 'Atmospheric' },
+  { feature: 'Diurnal Hour Angle', importance: 0.03, category: 'Astronomical' },
+  { feature: 'Solar Elevation Angle', importance: 0.02, category: 'Astronomical' },
+  { feature: 'Direct Normal Irradiance (DNI)', importance: 0.01, category: 'Atmospheric' },
 ];
 
-export const getFinancialMetrics = (hourlyData, currentHour) => {
-  const currentPrediction = hourlyData[currentHour] ? hourlyData[currentHour].predictedKW : 0;
-  const totalDailyKWh = hourlyData.reduce((acc, curr) => acc + curr.predictedKW, 0);
+export const getModelMetrics = () => XGBOOST_METADATA;
+
+export const getFinancialMetrics = (hourlyData = [], currentHour = 12) => {
+  const safeData = Array.isArray(hourlyData) ? hourlyData : [];
+  const currentPrediction = safeData[currentHour] ? safeData[currentHour].predictedKW : 0;
+  const totalDailyKWh = safeData.reduce((acc, curr) => acc + (curr?.predictedKW || 0), 0);
   
   const electricityRateUSD = 0.18;
   const dailySavingsUSD = (totalDailyKWh * electricityRateUSD).toFixed(2);
@@ -81,79 +128,50 @@ export const getFinancialMetrics = (hourlyData, currentHour) => {
 
   return {
     currentKW: currentPrediction,
-    totalDailyKWh: totalDailyKWh.toFixed(1),
+    currentPrediction,
+    totalDailyKWh: Number(totalDailyKWh.toFixed(1)),
     dailySavingsUSD,
     monthlySavingsUSD,
     co2AvoidedKg,
-    efficiencyScore: currentPrediction > 0 ? 94.2 : 0,
+    electricityRateUSD,
   };
 };
 
-export const getRecommendations = (currentHourData) => {
-  if (currentHourData.isAnomaly) {
-    return {
-      type: 'ANOMALY_WARNING',
-      title: 'Anomaly Detected: Atmospheric Transient at 14:00',
-      description: 'Model detected a 35% output deviation from expected clear-sky baseline. Smart Inverter MPPT tracking active.',
-      actionText: 'Optimize Inverter Tilt & Battery Buffer',
-      badgeColor: 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-    };
-  } else if (currentHourData.predictedKW > 30) {
-    return {
-      type: 'PEAK_GENERATION',
-      title: 'Peak Solar Generation Phase Active',
-      description: 'System operating at peak irradiance (>800 W/m²). Surplus power (>25 kW) recommended for EV Charging and Grid Arbitrage.',
-      actionText: 'Route Surplus to Battery Storage',
-      badgeColor: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30'
-    };
-  } else if (currentHourData.hour >= 18 || currentHourData.hour < 6) {
-    return {
-      type: 'NIGHT_MODE',
-      title: 'Nocturnal Standby Mode',
-      description: 'Zero solar irradiance. Battery energy storage system (BESS) handling facility load on off-peak rates.',
-      actionText: 'Monitor BESS Discharge Rate',
-      badgeColor: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30'
-    };
-  } else {
-    return {
-      type: 'RAMP_PHASE',
-      title: 'Solar Generation Ramping Phase',
-      description: 'Solar irradiance ramping up steadily. Predictive model confidence index at 98.4%.',
-      actionText: 'Standard Grid Tie Active',
-      badgeColor: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-    };
-  }
-};
+export const calculatePanelOutputs = (totalKW, faultedPanels = {}) => {
+  const TOTAL_PANELS = 32;
+  const baseKWPerPanel = (totalKW || 0) / TOTAL_PANELS;
 
-export const calculatePanelOutputs = (totalKW) => {
-  const panels = [];
-  const rows = 3;
-  const cols = 4;
-  const totalPanels = rows * cols;
-  const avgKWPerPanel = totalKW / totalPanels;
+  return Array.from({ length: TOTAL_PANELS }, (_, i) => {
+    const panelId = i + 1;
+    const fault = faultedPanels[panelId];
 
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const id = r * cols + c + 1;
-      const variance = 1 + (Math.sin(id * 1.7) * 0.06);
-      const panelKW = Number((avgKWPerPanel * variance).toFixed(2));
-      const temp = 22 + (totalKW > 0 ? (totalKW / 48) * 16 + (r * 0.8) : 0);
-      const efficiency = panelKW > 0 ? 94.5 - (temp - 25) * 0.35 : 0;
+    let factor = 1.0;
+    let status = 'Optimal';
 
-      panels.push({
-        id,
-        row: r + 1,
-        col: c + 1,
-        label: `Panel A-${r + 1}${c + 1}`,
-        predictedKW: panelKW,
-        temperatureC: Number(temp.toFixed(1)),
-        efficiencyPct: Number(Math.max(0, Math.min(99.9, efficiency)).toFixed(1)),
-        voltageV: panelKW > 0 ? Number((48.2 + variance).toFixed(1)) : 0,
-        currentA: panelKW > 0 ? Number(((panelKW * 1000) / 48.2).toFixed(1)) : 0,
-        status: panelKW > 0 ? (panelKW < avgKWPerPanel * 0.8 ? 'Underperforming' : 'Optimal') : 'Standby'
-      });
+    if (fault === 'Offline') {
+      factor = 0.0;
+      status = 'Offline';
+    } else if (fault === 'Underperforming') {
+      factor = 0.45;
+      status = 'Underperforming';
     }
-  }
 
-  return panels;
+    const predictedKW = Number((baseKWPerPanel * factor).toFixed(2));
+    const isDegraded = status === 'Underperforming';
+    const isOffline = status === 'Offline';
+
+    const voltageV = isOffline ? 0 : isDegraded ? 18.5 : Number((38.0 + (predictedKW / 4.0) * 4.5).toFixed(1));
+    const currentA = isOffline ? 0 : isDegraded ? 3.8 : Number((predictedKW > 0 ? (predictedKW * 1000) / voltageV : 0).toFixed(1));
+
+    return {
+      id: panelId,
+      label: `Module A-${panelId}`,
+      status,
+      predictedKW,
+      voltageV,
+      currentA,
+      temperatureC: isOffline ? 28.0 : isDegraded ? 48.2 : Number((34.0 + factor * 24.7).toFixed(1)),
+      efficiencyPct: isOffline ? 0.0 : isDegraded ? 9.2 : Number((20.5 * factor).toFixed(1)),
+    };
+  });
 };

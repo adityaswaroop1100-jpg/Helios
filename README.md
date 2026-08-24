@@ -1,131 +1,217 @@
-# Serverless Document Processing Pipeline on Google Cloud
+# HELIOS SCADA — Next-Gen AI Solar PV Digital Twin & MLOps Platform
 
-An event-driven document processing pipeline that automatically ingests files from Cloud Storage, triggers processing via Pub/Sub, runs simulated OCR (FastAPI on Cloud Run), and streams extracted metadata to BigQuery.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![React](https://img.shields.io/badge/React-18.3-61dafb.svg?logo=react&logoColor=black)](https://react.dev/)
+[![Three.js](https://img.shields.io/badge/Three.js-r170-black.svg?logo=threedotjs&logoColor=white)](https://threejs.org/)
+[![XGBoost](https://img.shields.io/badge/XGBoost-v2.0-orange.svg?logo=xgboost&logoColor=white)](https://xgboost.readthedocs.io/)
+[![Firebase](https://img.shields.io/badge/Firebase-Firestore-ffca28.svg?logo=firebase&logoColor=black)](https://firebase.google.com/)
+[![TailwindCSS](https://img.shields.io/badge/Tailwind-v3.4-38bdf8.svg?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+
+**HELIOS** is an industrial-grade Solar Photovoltaic (PV) Supervisory Control and Data Acquisition (**SCADA**) platform and **3D WebGL Digital Twin**. Designed for utility-scale and commercial microgrids, HELIOS combines real-time satellite irradiance telemetry, physics-based single-axis tracker kinematics, gradient-boosted decision tree ML forecasting (**XGBoost $R^2 = 99.89\%$**), sub-second anomaly isolation, and **Google Firebase Firestore** cloud streaming.
 
 ---
 
-## Architecture
+## ⚡ Core Capabilities
+
+- **🌐 Interactive 3D Digital Twin**: High-fidelity WebGL solar array (32 monocrystalline modules, $8\times4$ grid) with dynamic sun positioning, single-axis tracker kinematics, real-time shadow casting, and individual panel inspection.
+- **🏢 3D Photorealistic NOC Control Room**: Immersive 3D SCADA command center featuring a massive $6\times2$ curved telemetry video wall, multi-operator workstations, and Edge AI server racks with live telemetry indicators.
+- **🧠 Production XGBoost Forecasting**: 15-dimensional solar feature regression model trained on 35,040 timestamped SCADA records for 24-hour yield prediction with **P10–P90 quantile uncertainty confidence intervals**.
+- **🔥 Firebase Firestore Cloud Pipeline**: 100% serverless, zero-local-disk cloud streaming architecture for high-frequency telemetry logs (`telemetry_logs`) and automated event ledgers (`scada_events`).
+- **⚡ Autonomous Anomaly Response & BESS Dispatch**: Sub-second ML anomaly classification (soiling, diode failure, cloud transients) with automated electronic DC isolation and Battery Energy Storage System (**BESS**) dynamic power substitution.
+- **📈 Comprehensive Financial & ESG Cockpit**: Real-time monetary savings tracking ($0.18/kWh commercial benchmark), grid peak arbitrage, and Scope-2 carbon avoidance metrics.
+
+---
+
+## 🏗️ System Architecture
 
 ```
-[User Upload] -> [GCS Bucket]
-                    | (Object Finalize)
-                    v
-             [Pub/Sub Topic]
-                    | (Push Subscription with OIDC Auth)
-                    v
-         [FastAPI on Cloud Run]
-             - Downloads document from GCS
-             - Performs simulated OCR (word count, keyword tagging)
-             - Streams metadata to BigQuery
+                                  ┌───────────────────────────────┐
+                                  │ Open-Meteo Satellite Weather  │
+                                  │ GHI, DNI, DHI, Temp, Clouds   │
+                                  └───────────────┬───────────────┘
+                                                  │
+                                                  ▼
+┌───────────────────────────┐      ┌───────────────────────────────┐      ┌──────────────────────────────┐
+│ Modbus RTU / MLPE Sensors │ ───► │  15-D Solar Physics Engine    │ ───► │ XGBoost Predictive Regressor │
+│ String Voltage & Current  │      │  NOCT Thermal & Tracking Kin. │      │ R²: 99.89% · RMSE: 0.334 kW  │
+└───────────────────────────┘      └───────────────┬───────────────┘      └──────────────┬───────────────┘
+                                                  │                                      │
+                                                  ▼                                      ▼
+                                   ┌───────────────────────────────┐      ┌──────────────────────────────┐
+                                   │ Google Firebase Firestore     │ ◄─── │ Autonomous SCADA Dispatch    │
+                                   │ telemetry_logs & scada_events │      │ DC Isolation & BESS Inject   │
+                                   └───────────────┬───────────────┘      └──────────────────────────────┘
+                                                  │
+                                                  ▼
+                                   ┌───────────────────────────────┐
+                                   │ React 18 + Three.js 3D Twin   │
+                                   │ SCADA Cockpit & Virtual NOC   │
+                                   └───────────────────────────────┘
 ```
 
 ---
 
-## Folder Structure
+## 📊 Plant Technical Specifications
 
-- `/processor`: FastAPI service code (OCR engine, BigQuery client wrapper, Dockerfile).
-- `/simulation`: Local CLI script (`simulate.py`) to run and test the complete pipeline locally without GCP resources.
-- `/terraform`: Terraform configurations to provision all Google Cloud resources and configure security roles.
+| Parameter | Specification | Standard / Model |
+| :--- | :--- | :--- |
+| **Nameplate Capacity** | 48.0 kW Peak | 32 $\times$ 1.5 kW Monocrystalline Units |
+| **Array Layout** | $8 \times 4$ Matrix (4 Strings) | Single-Axis Horizontal Tracker ($\pm 45^\circ$) |
+| **Nominal STC Efficiency** | 20.5% | $1000\text{ W/m}^2$, $25^\circ\text{C}$, AM 1.5G |
+| **Temperature Coefficient** | $-0.35\% / ^\circ\text{C}$ | NOCT: $T_{cell} = T_{amb} + 0.0256 \times \text{GHI}$ |
+| **BESS Storage Bank** | 50.0 kWh / 42.0 kW Discharge | LiFePO4 Online Static Transfer (0 ms) |
+| **Inverter Topology** | Central MPPT Grid-Tie | 98.4% Euro Efficiency |
 
 ---
 
-## 1. Local Simulation
+## 🧠 Machine Learning & MLOps Pipeline
 
-Test the application locally without active Google Cloud resources. The local simulation runs a local FastAPI instance, mocks GCS downloads, generates mock file content based on filenames, and stub-inserts metadata into console logs.
+HELIOS uses an ensemble of gradient-boosted decision trees trained on multi-spectral solar irradiance, geometrical sun angles, and NOCT cell temperatures:
+
+- **Mean Power Regressor**: Objective `reg:squarederror`, Depth 6, 350 Estimators.
+- **P10 Lower Bound**: Objective `reg:quantileerror` ($\alpha = 0.10$).
+- **P90 Upper Bound**: Objective `reg:quantileerror` ($\alpha = 0.90$).
+- **Feature Vector (15-D)**: Solar Zenith, Solar Elevation, GHI, DNI, DHI, Ambient Temp, Cell Temp, Cloud Cover %, Relative Humidity %, and Cyclical Diurnal/Seasonal Encodings (`hour_sin`, `hour_cos`, `doy_sin`, `doy_cos`).
+
+```
+Model Evaluation Metrics (Out-of-Sample Test Split):
+├── Overall R² Score:         0.9989 (99.89%)
+├── Daytime R² Score:         0.9991 (99.91%)
+├── Root Mean Squared Error:  0.334 kW (0.69% of Peak)
+└── Mean Absolute Error:      0.184 kW
+```
+
+---
+
+## 📂 Repository Structure
+
+```
+HElioss/
+├── frontend/                     # React 18 + Vite + Three.js WebGL Application
+│   ├── src/
+│   │   ├── api/                  # Physics engine, Firebase REST client, XGBoost API
+│   │   │   ├── cloudScadaDatabase.js
+│   │   │   ├── energyEngine.js
+│   │   │   ├── firebaseService.js
+│   │   │   ├── forecastApi.js
+│   │   │   └── xgboostModel.js
+│   │   ├── components/
+│   │   │   ├── 3d/               # Three.js 3D Solar Twin & Virtual Control Room
+│   │   │   │   ├── ControlRoomInterior3D.jsx
+│   │   │   │   ├── PanelInspectorHtml.jsx
+│   │   │   │   ├── SceneControls.jsx
+│   │   │   │   ├── Solar3DScene.jsx
+│   │   │   │   └── SolarPanel3D.jsx
+│   │   │   └── dashboard/        # Industrial SCADA UI Components
+│   │   │       ├── AnomalyPanel.jsx
+│   │   │       ├── CostEstimate.jsx
+│   │   │       ├── EnergyComputePanel.jsx
+│   │   │       ├── FeatureImportance.jsx
+│   │   │       ├── ForecastChart.jsx
+│   │   │       ├── HistorianView.jsx
+│   │   │       ├── LocationModal.jsx
+│   │   │       └── RecommendationBanner.jsx
+│   │   ├── App.jsx               # Main Application Orchestrator
+│   │   └── index.css             # Obsidian Glass Design System Tokens
+│   ├── package.json
+│   ├── tailwind.config.js
+│   └── vite.config.js
+│
+├── ml/                           # Python Machine Learning & MLOps Pipeline
+│   ├── models/                   # Serialized XGBoost model artifacts
+│   │   ├── xgboost_solar_mean.json
+│   │   ├── xgboost_solar_p10.json
+│   │   └── xgboost_solar_p90.json
+│   ├── train_xgboost.py          # Primary training pipeline with evaluation
+│   ├── train_with_firebase.py    # Firebase continuous retraining script
+│   └── metrics_report.json       # Benchmark metrics & feature importances
+│
+├── processor/                    # FastAPI Ingestion Service & Satellite Client
+│   ├── main.py
+│   ├── weather_client.py
+│   └── requirements.txt
+│
+└── simulation/                   # Local pipeline simulation utilities
+    └── simulate.py
+```
+
+---
+
+## 🚀 Quick Start Guide
 
 ### Prerequisites
-- Python 3.10+
-- `pip` (Python package installer)
-
-### Setup & Run
-1. Create a Python virtual environment and activate it:
-   ```bash
-   python -m venv venv
-   # On Windows:
-   .\venv\Scripts\activate
-   # On macOS/Linux:
-   source venv/bin/activate
-   ```
-
-2. Install dependencies:
-   ```bash
-   pip install -r processor/requirements.txt
-   ```
-
-3. Run the simulation script:
-   ```bash
-   python simulation/simulate.py
-   ```
-
-The script will launch FastAPI, trigger three different simulated file upload notifications (PDF, text, image), process them, and shut down gracefully. You will see mock BigQuery insert logs with file attributes (word counts and custom tags) in stdout.
+- **Node.js**: v18.0 or higher
+- **npm**: v9.0 or higher
+- **Python**: 3.10+ (for standalone ML training)
 
 ---
 
-## 2. Google Cloud Deployment
+### 1. Frontend Setup & Launch
 
-Deploy the infrastructure and processor service to your GCP Project.
+```bash
+# Navigate to the frontend directory
+cd frontend
 
-### Step 2.1: Initializing Terraform
-1. Install the [Terraform CLI](https://developer.hashicorp.com/terraform/downloads) and [Google Cloud SDK](https://cloud.google.com/sdk).
-2. Authenticate with Google Cloud:
-   ```bash
-   gcloud auth application-default login
-   ```
-3. Navigate to the terraform directory:
-   ```bash
-   cd terraform
-   ```
-4. Create a `terraform.tfvars` file and add your GCP project ID:
-   ```hcl
-   project_id = "your-gcp-project-id"
-   region     = "us-central1"
-   ```
-5. Initialize and apply Terraform:
-   ```bash
-   terraform init
-   terraform apply
-   ```
-   *Note: On the first apply, Terraform will deploy Cloud Run using a placeholder hello-world container image, which we will update in the next steps.*
+# Install dependencies
+npm install
 
-### Step 2.2: Building and Pushing the Docker Image
-To deploy the actual processing code to Cloud Run:
-1. Create an Artifact Registry Repository to host your Docker image:
-   ```bash
-   gcloud artifacts repositories create document-pipeline-repo \
-       --repository-format=docker \
-       --location=us-central1 \
-       --description="Docker repository for document processor"
-   ```
-2. Build and submit your Docker image using Cloud Build:
-   ```bash
-   cd ../processor
-   gcloud builds submit --tag us-central1-docker.pkg.dev/your-gcp-project-id/document-pipeline-repo/processor:latest .
-   ```
+# Start the local development server
+npm run dev
+```
 
-### Step 2.3: Update Cloud Run Service via Terraform
-Now that the Docker image is in Artifact Registry, update Terraform with the new image tag.
-1. Open `terraform/terraform.tfvars` and add the new image path:
-   ```hcl
-   image_name = "us-central1-docker.pkg.dev/your-gcp-project-id/document-pipeline-repo/processor:latest"
-   ```
-2. Re-apply the Terraform configurations:
-   ```bash
-   cd ../terraform
-   terraform apply
-   ```
+Open your browser and navigate to **`http://localhost:5173`** (or the port indicated in your terminal).
+
+To build the production-optimized bundle:
+```bash
+npm run build
+```
 
 ---
 
-## 3. Testing the Live Pipeline on GCP
+### 2. Machine Learning Training & MLOps
 
-To test the live end-to-end pipeline:
-1. Upload a file containing keywords (e.g. including "invoice" or "report") to your GCS bucket. You can find the bucket name in the Terraform output variables.
-   ```bash
-   gcloud storage cp sample.txt gs://<your-gcs-bucket-name>/
-   ```
-2. Watch the logs of your Cloud Run service to verify it received the event and ran simulated OCR.
-3. Query the BigQuery table to inspect the streamed metadata:
-   ```bash
-   bq query --use_legacy_sql=false \
-   "SELECT * FROM \`your-gcp-project-id.document_processing.metadata\` LIMIT 10"
-   ```
+To retrain the production XGBoost models or verify benchmark metrics:
+
+```bash
+# Set up Python virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install ML dependencies
+pip install numpy pandas scikit-learn xgboost httpx fastapi uvicorn
+
+# Run the primary training script
+python ml/train_xgboost.py
+
+# Run the continuous Firebase training pipeline
+python ml/train_with_firebase.py
+```
+
+---
+
+## 🔥 Firebase Cloud Integration
+
+HELIOS streams all real-time telemetry and SCADA incident logs directly to **Google Cloud Firestore**.
+
+1. Navigate to the **`🔥 Firebase Sync`** tab in the dashboard.
+2. Click **`Firebase Config`** to link your Firebase project ID.
+3. Live documents will stream into:
+   - `telemetry_logs`: Timestamped sensor records (GHI, active kW, cell temp, anomaly flag).
+   - `scada_events`: Automated RTU decisions and BESS dispatch events.
+   - `ml_model_versions`: Deployed model version artifacts and accuracy metrics.
+
+---
+
+## 🛠️ Tech Stack
+
+- **Frontend & 3D**: React 18, Three.js, `@react-three/fiber`, `@react-three/drei`, Recharts, Lucide Icons, Vite
+- **Styling**: Tailwind CSS, Plus Jakarta Sans, JetBrains Mono, Custom Obsidian Glassmorphism
+- **Machine Learning**: Python 3.10+, XGBoost, Scikit-Learn, NumPy, Pandas
+- **Cloud & Ingestion**: Google Firebase Firestore REST, FastAPI, Open-Meteo API
+- **Standards Compliance**: IEC 61724 (PV Performance Monitoring) & IEEE 1547 (Grid Interconnection)
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.

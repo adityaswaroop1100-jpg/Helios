@@ -25,7 +25,7 @@ def run_simulation():
     
     print(f"Launching FastAPI app from root: {root_dir}")
     server_process = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "processor.main:app", "--host", "127.0.0.1", "--port", "8000", "--log-level", "info"],
+        [sys.executable, "-m", "uvicorn", "processor.main:app", "--host", "127.0.0.1", "--port", "8001", "--log-level", "info"],
         env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -33,7 +33,7 @@ def run_simulation():
     )
 
     # Give server a moment to start and check health
-    url = "http://127.0.0.1:8000"
+    url = "http://127.0.0.1:8001"
     health_url = f"{url}/health"
     pubsub_url = f"{url}/pubsub"
 

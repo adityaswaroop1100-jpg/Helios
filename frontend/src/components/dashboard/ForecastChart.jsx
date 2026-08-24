@@ -1,44 +1,49 @@
 import React, { useState } from 'react';
 import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ReferenceLine
+  AreaChart, Area, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, ReferenceLine
 } from 'recharts';
-import { TrendingUp, AlertTriangle, Info } from 'lucide-react';
+import { TrendingUp, AlertTriangle, Info, MousePointerClick, MapPin, Zap } from 'lucide-react';
+import { DEFAULT_LOCATION } from '../../api/energyEngine';
 
 const CustomTooltip = ({ active, payload }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
-      <div className="bg-[#141619] border border-[#2a2d32] p-3 rounded-sm text-xs space-y-1 font-mono text-[#c7ccd4]">
-        <p className="font-bold text-white text-xs border-b border-[#2a2d32] pb-1 uppercase tracking-wider">
-          TIME: {data.timeLabel}
-        </p>
-        <div className="flex items-center justify-between gap-4 text-[#f0a830]">
-          <span>OUTPUT:</span>
-          <span className="font-bold text-xs tabular-nums">{data.predictedKW} kW</span>
+      <div
+        className="p-4 rounded-xl shadow-2xl text-xs space-y-2.5 glass-panel border border-sky-500/30 backdrop-blur-2xl"
+        style={{ minWidth: '220px' }}
+      >
+        <div className="font-bold pb-2 flex items-center justify-between text-white border-b border-white/[0.08]">
+          <span className="font-display tracking-wide">{data.timeLabel}</span>
+          {data.ambientTemp !== undefined && (
+            <span className="text-2xs text-sky-400 font-display font-semibold bg-sky-500/10 px-2 py-0.5 rounded-md border border-sky-500/20">
+              {data.ambientTemp}°C
+            </span>
+          )}
         </div>
-        <div className="flex items-center justify-between gap-4 text-[#9ca3af]">
-          <span>P90 BOUND:</span>
-          <span className="tabular-nums">{data.p90UpperKW} kW</span>
+        <div className="flex justify-between items-center gap-6">
+          <span className="text-slate-400 flex items-center gap-1.5"><Zap size={13} className="text-amber-400" /> Active PV Yield</span>
+          <span className="font-display font-extrabold text-amber-400 text-sm">{data.predictedKW} kW</span>
         </div>
-        <div className="flex items-center justify-between gap-4 text-[#9ca3af]">
-          <span>P10 BOUND:</span>
-          <span className="tabular-nums">{data.p10LowerKW} kW</span>
+        <div className="flex justify-between items-center gap-6">
+          <span className="text-slate-400">P90 Upper Bound</span>
+          <span className="font-display text-sky-400 font-bold">{data.p90UpperKW} kW</span>
         </div>
-        <div className="flex items-center justify-between gap-4 text-[#c7ccd4]">
-          <span>IRRADIANCE:</span>
-          <span className="tabular-nums">{data.irradiance} W/m²</span>
+        <div className="flex justify-between items-center gap-6">
+          <span className="text-slate-400">Solar GHI</span>
+          <span className="font-display text-slate-200 font-semibold">{data.irradiance} W/m²</span>
         </div>
+        {data.directW !== undefined && (
+          <div className="flex justify-between items-center gap-6 text-2xs text-slate-500 border-t border-white/[0.05] pt-1.5 font-display">
+            <span>Direct / Diffuse</span>
+            <span className="text-slate-300">{data.directW} / {data.diffuseW} W/m²</span>
+          </div>
+        )}
         {data.isAnomaly && (
-          <div className="mt-1 pt-1 border-t border-[#f59e0b]/40 text-[#f59e0b] flex items-center gap-1 font-bold">
+          <div className="flex items-center gap-1.5 pt-2 font-semibold text-2xs text-rose-400 border-t border-rose-500/30">
             <AlertTriangle size={12} />
-            <span>ANOMALY DETECTED</span>
+            <span>{data.anomalyDescription || 'Generation Anomaly'}</span>
           </div>
         )}
       </div>
@@ -47,60 +52,66 @@ const CustomTooltip = ({ active, payload }) => {
   return null;
 };
 
-export default function ForecastChart({ hourlyData, currentHour, onSelectHour }) {
+export default function ForecastChart({ hourlyData = [], currentHour, onSelectHour, location = DEFAULT_LOCATION }) {
   const [showInfo, setShowInfo] = useState(false);
-  const currentData = hourlyData[currentHour] || {};
 
   return (
-    <div className="bg-[#141619] border border-[#2a2d32] rounded-sm p-5 shadow-none flex flex-col h-full relative font-mono">
+    <div className="data-card rounded-2xl p-6 shadow-2xl">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <div className="flex flex-wrap items-start justify-between gap-4 mb-5 pb-4 border-b border-white/[0.06]">
         <div>
-          <div className="flex items-center gap-2">
-            <TrendingUp className="text-[#f0a830]" size={18} />
-            <h2 className="text-xs font-bold text-white tracking-widest uppercase">24-HOUR GENERATION PREDICTION</h2>
+          <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center">
+              <TrendingUp size={16} className="text-amber-400" />
+            </div>
+            <h2 className="font-bold text-base text-white tracking-tight">24-Hour Solar PV Generation Curve</h2>
+            <span
+              className="text-2xs px-2.5 py-1 rounded-full font-semibold uppercase tracking-wider flex items-center gap-1.5"
+              style={{ background: 'rgba(56,189,248,0.12)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.28)' }}
+            >
+              <MapPin size={10} />
+              <span>{location.name}</span>
+            </span>
             <div className="relative">
               <button
                 onMouseEnter={() => setShowInfo(true)}
                 onMouseLeave={() => setShowInfo(false)}
-                onClick={() => setShowInfo(!showInfo)}
-                className="text-[#9ca3af] hover:text-[#f0a830] transition-colors p-0.5"
+                className="text-slate-500 hover:text-slate-300 transition-colors p-1"
               >
                 <Info size={14} />
               </button>
               {showInfo && (
-                <div className="absolute left-0 top-6 z-30 w-72 p-3 bg-[#141619] border border-[#2a2d32] rounded-sm text-xs text-[#c7ccd4] leading-relaxed font-sans select-none">
-                  <b>Confidence Band</b>
-                  <p className="mt-1 text-[11px] text-[#9ca3af]">
-                    Shaded area represents P10–P90 (80%) confidence interval from XGBoost model accounting for atmospheric variations.
-                  </p>
+                <div
+                  className="absolute left-0 top-8 z-40 w-72 p-3.5 text-xs leading-relaxed rounded-xl shadow-2xl glass-panel text-slate-300 border border-sky-500/20 animate-fadeInFast"
+                >
+                  24-hour continuous forecast from satellite telemetry for {location.name} ({location.latitude}°N) with NOCT thermal derating and P10–P90 uncertainty confidence bounds.
                 </div>
               )}
             </div>
           </div>
-          <p className="text-[11px] text-[#9ca3af] mt-0.5 uppercase tracking-wider">
-            XGBoost ML model predictions with 80% confidence interval band (P10–P90)
+          <p className="text-xs text-slate-400">
+            Real-time satellite GHI solar forecasting · Interactive hour selection
           </p>
         </div>
 
-        <div className="flex items-center gap-4 text-xs font-mono">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-none bg-[#f0a830] inline-block"></span>
-            <span className="text-[#c7ccd4]">PREDICTED (KW)</span>
+        <div className="flex items-center gap-4 text-xs">
+          <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20">
+            <div className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-glow" />
+            <span className="text-amber-300 font-display font-semibold text-2xs">Predicted kW</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-3 h-2 rounded-none bg-[#374151] border border-[#4b5563] inline-block"></span>
-            <span className="text-[#9ca3af]">CONFIDENCE BAND</span>
+          <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-sky-500/10 border border-sky-500/20">
+            <div className="w-2.5 h-2.5 rounded-full bg-sky-400" />
+            <span className="text-sky-300 font-display font-semibold text-2xs">P10–P90 Band</span>
           </div>
         </div>
       </div>
 
-      {/* Recharts Chart Container */}
-      <div className="w-full h-72 sm:h-80 min-h-[280px]">
+      {/* Chart Canvas */}
+      <div className="w-full" style={{ height: '300px', cursor: 'pointer' }}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
             data={hourlyData}
-            margin={{ top: 10, right: 20, left: -10, bottom: 0 }}
+            margin={{ top: 12, right: 12, left: -10, bottom: 0 }}
             onClick={(e) => {
               if (e && e.activePayload && e.activePayload.length) {
                 onSelectHour(e.activePayload[0].payload.hour);
@@ -108,76 +119,70 @@ export default function ForecastChart({ hourlyData, currentHour, onSelectHour })
             }}
           >
             <defs>
-              <linearGradient id="colorPredicted" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#f0a830" stopOpacity={0.6} />
-                <stop offset="95%" stopColor="#f0a830" stopOpacity={0.0} />
+              <linearGradient id="gradPredicted" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.55} />
+                <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.02} />
               </linearGradient>
-              <linearGradient id="colorBand" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#4b5563" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#4b5563" stopOpacity={0.05} />
+              <linearGradient id="gradBand" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#38bdf8" stopOpacity={0.18} />
+                <stop offset="100%" stopColor="#38bdf8" stopOpacity={0.01} />
               </linearGradient>
             </defs>
-
-            <CartesianGrid strokeDasharray="2 2" stroke="#2a2d32" vertical={false} />
+            <CartesianGrid strokeDasharray="3 6" stroke="rgba(255,255,255,0.05)" vertical={false} />
             <XAxis
               dataKey="timeLabel"
-              stroke="#6b7280"
+              stroke="transparent"
               fontSize={11}
               tickLine={false}
-              axisLine={{ stroke: '#2a2d32' }}
+              axisLine={false}
+              tick={{ fill: '#64748b' }}
             />
             <YAxis
-              stroke="#6b7280"
+              stroke="transparent"
               fontSize={11}
               tickLine={false}
-              axisLine={{ stroke: '#2a2d32' }}
+              axisLine={false}
               unit=" kW"
-              domain={[0, 60]}
+              domain={[0, 52]}
+              tick={{ fill: '#64748b' }}
             />
-            <Tooltip content={<CustomTooltip />} />
-
-            <Area
-              type="monotone"
-              dataKey="p90UpperKW"
-              stroke="none"
-              fill="url(#colorBand)"
-              name="Confidence Upper"
+            <Tooltip
+              content={<CustomTooltip />}
+              cursor={{ stroke: '#38bdf8', strokeWidth: 1.5, strokeDasharray: '4 4' }}
             />
-            
+            <Area type="monotone" dataKey="p90UpperKW" stroke="none" fill="url(#gradBand)" name="Confidence" />
             <Area
               type="monotone"
               dataKey="predictedKW"
-              stroke="#f0a830"
-              strokeWidth={2}
+              stroke="#f59e0b"
+              strokeWidth={3}
               fillOpacity={1}
-              fill="url(#colorPredicted)"
-              name="Predicted Output"
-              activeDot={{ r: 5, fill: '#f0a830', stroke: '#ffffff', strokeWidth: 2 }}
+              fill="url(#gradPredicted)"
+              name="Predicted"
+              activeDot={{ r: 6, fill: '#f59e0b', stroke: '#020712', strokeWidth: 3 }}
             />
-
-            {currentHour !== null && (
+            {currentHour !== null && hourlyData && hourlyData[currentHour] && (
               <ReferenceLine
                 x={hourlyData[currentHour]?.timeLabel}
                 stroke="#f59e0b"
-                strokeWidth={1.5}
-                strokeDasharray="3 3"
-                label={{
-                  value: 'ACTIVE',
-                  fill: '#f59e0b',
-                  fontSize: 10,
-                  position: 'top'
-                }}
+                strokeWidth={2}
+                strokeDasharray="4 4"
+                label={{ value: '▼ LIVE', fill: '#f59e0b', fontSize: 10, fontWeight: 900, position: 'top' }}
               />
             )}
           </AreaChart>
         </ResponsiveContainer>
       </div>
 
-      <div className="mt-3 pt-3 border-t border-[#2a2d32] flex items-center justify-between text-xs font-mono uppercase tracking-wider">
-        <span className="text-[#9ca3af]">CLICK GRAPH POINT TO SELECT ACTIVE HOUR:</span>
-        <span className="text-[#f0a830] font-bold bg-[#0b0c0e] border border-[#2a2d32] px-2 py-0.5 rounded-sm tabular-nums">
-          ACTIVE: {currentData.timeLabel} ({currentData.predictedKW} kW)
-        </span>
+      {/* Footer */}
+      <div className="mt-4 flex items-center justify-between gap-3 flex-wrap pt-3 border-t border-white/[0.06]">
+        <div className="flex items-center gap-2 text-xs text-slate-400">
+          <MousePointerClick size={14} className="text-sky-400" />
+          <span>Click any hour node to inspect string voltage &amp; cell temperature</span>
+        </div>
+        <div className="text-2xs text-slate-500 font-display">
+          Peak Window: <span className="text-amber-400 font-semibold">11:00 – 14:00</span> · Nameplate: <span className="text-sky-400 font-semibold">48.0 kW</span>
+        </div>
       </div>
     </div>
   );

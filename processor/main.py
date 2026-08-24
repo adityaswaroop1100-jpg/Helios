@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from processor.ocr import perform_ocr
 from processor.bigquery_client import BigQueryClientWrapper
-
+from processor.weather_client import fetch_weather_telemetry
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("processor")
@@ -35,6 +35,13 @@ class PubSubPayload(BaseModel):
 @app.get("/health")
 def health_check():
     return {"status": "healthy"}
+
+@app.get("/api/telemetry/current")
+async def get_current_telemetry():
+    """
+    Returns current weather telemetry for the SCADA dashboard.
+    """
+    return await fetch_weather_telemetry()
 
 @app.post("/pubsub", status_code=status.HTTP_202_ACCEPTED)
 async def handle_pubsub_message(payload: PubSubPayload):

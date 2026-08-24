@@ -1,37 +1,193 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Design Tokens ──────────────────────────────────────────────────────── */
 :root {
-  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color-scheme: dark;
+  --bg-base:    #020712;
+  --bg-surface: #061022;
+  --bg-card:    #0a1a30;
+  --bg-raised:  #0e223e;
+  --border-dim: rgba(255,255,255,0.06);
+  --border-hi:  rgba(56,189,248,0.3);
+  --text-1:     #f8fafc;
+  --text-2:     #94a3b8;
+  --text-3:     #475569;
+  --amber:      #f59e0b;
+  --sky:        #38bdf8;
+  --emerald:    #10b981;
+  --rose:       #f43f5e;
+  --indigo:     #818cf8;
 }
+
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 
 body {
   margin: 0;
   padding: 0;
-  background-color: #0b0c0e;
-  color: #f9fafb;
-  font-family: 'IBM Plex Sans', sans-serif;
+  background-color: var(--bg-base);
+  color: var(--text-1);
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Multi-Layer Ambient Light Blooms */
+  background-image:
+    radial-gradient(circle 800px at 50% -100px, rgba(56,189,248,0.09) 0%, transparent 80%),
+    radial-gradient(circle 600px at 5% 35%, rgba(16,185,129,0.06) 0%, transparent 70%),
+    radial-gradient(circle 700px at 95% 65%, rgba(245,158,11,0.05) 0%, transparent 70%),
+    radial-gradient(circle 900px at 50% 120%, rgba(99,102,241,0.04) 0%, transparent 70%);
+  background-attachment: fixed;
 }
 
-.font-mono {
-  font-family: 'JetBrains Mono', monospace;
-  font-variant-numeric: tabular-nums;
+/* ─── Typography & Utilities ─────────────────────────────────────────────── */
+.font-display { font-family: 'JetBrains Mono', monospace; font-feature-settings: "tnum" 1; }
+.text-2xs  { font-size: 0.65rem; line-height: 1rem; }
+.text-3xs  { font-size: 0.58rem; line-height: 0.9rem; }
+::selection { background: rgba(56,189,248,0.3); color: #f0f9ff; }
+
+/* ─── Ultra-Premium Glass System ─────────────────────────────────────────── */
+.glass-panel {
+  background: linear-gradient(135deg, rgba(8, 20, 38, 0.85) 0%, rgba(4, 11, 24, 0.9) 100%);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
 }
 
-/* Custom scrollbar - Industrial SCADA style */
+.glass-card {
+  background: linear-gradient(145deg, rgba(11, 27, 49, 0.92) 0%, rgba(5, 14, 28, 0.97) 100%);
+  backdrop-filter: blur(20px) saturate(170%);
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 10px 40px rgba(0, 0, 0, 0.55);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card:hover {
+  border-color: rgba(56, 189, 248, 0.25);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 16px 52px rgba(0, 0, 0, 0.65),
+    0 0 28px rgba(56, 189, 248, 0.1);
+  transform: translateY(-2px);
+}
+
+/* Static Data Card */
+.data-card {
+  background: linear-gradient(145deg, rgba(10, 24, 44, 0.95) 0%, rgba(4, 12, 25, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* Metric KPI Card with top shine & glowing hover */
+.metric-card {
+  background: linear-gradient(155deg, rgba(12, 28, 50, 0.95) 0%, rgba(6, 15, 30, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 8px 36px rgba(0, 0, 0, 0.45);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.metric-card:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 16px 48px rgba(0, 0, 0, 0.6),
+    0 0 24px rgba(56, 189, 248, 0.08);
+  transform: translateY(-3px);
+}
+
+/* ─── Glowing Elements ───────────────────────────────────────────────────── */
+.glow-amber {
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.25);
+}
+.glow-sky {
+  box-shadow: 0 0 24px rgba(56, 189, 248, 0.25);
+}
+.glow-emerald {
+  box-shadow: 0 0 24px rgba(16, 185, 129, 0.25);
+}
+
+/* ─── Range Sliders ──────────────────────────────────────────────────────── */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.08);
+  height: 6px;
+  border-radius: 9999px;
+  outline: none;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #38bdf8, #0284c7);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+  border: 2px solid #ffffff;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 18px rgba(56, 189, 248, 0.9);
+}
+
+/* ─── Custom Scrollbar ───────────────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: #0b0c0e;
+  background: rgba(2, 6, 15, 0.8);
 }
 ::-webkit-scrollbar-thumb {
-  background: #2a2d32;
-  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3a3d42;
+  background: rgba(56, 189, 248, 0.4);
+}
+
+/* ─── Animations ─────────────────────────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInFast {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.05); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fadeInFast {
+  animation: fadeInFast 0.2s ease forwards;
+}
+
+.animate-spin-slow {
+  animation: spin 16s linear infinite;
 }

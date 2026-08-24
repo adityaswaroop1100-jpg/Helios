@@ -1,0 +1,41 @@
+{
+  "model_architecture": "XGBoost Gradient Boosted Decision Trees (Ensemble)",
+  "plant_capacity_kw": 48.0,
+  "dataset_size_samples": 35040,
+  "test_r2_score": 0.9989,
+  "daytime_r2_score": 0.9976,
+  "test_rmse_kw": 0.334,
+  "daytime_rmse_kw": 0.455,
+  "test_mae_kw": 0.184,
+  "daytime_mae_kw": 0.36,
+  "feature_importances_gain": {
+    "zenith_angle_deg": 0.4891,
+    "ghi": 0.4568,
+    "hour_cos": 0.0301,
+    "solar_elevation_deg": 0.0187,
+    "dni": 0.0045,
+    "ambient_temp_c": 0.0003,
+    "cloud_cover_pct": 0.0002,
+    "dhi": 0.0001,
+    "day_of_year": 0.0001,
+    "panel_temp_c": 0.0001,
+    "doy_sin": 0.0,
+    "hour": 0.0,
+    "doy_cos": 0.0,
+    "hour_sin": 0.0,
+    "relative_humidity_pct": 0.0
+  },
+  "hyperparameters": {
+    "n_estimators": 350,
+    "max_depth": 6,
+    "learning_rate": 0.035,
+    "subsample": 0.85,
+    "colsample_bytree": 0.85,
+    "reg_alpha": 0.15,
+    "reg_lambda": 1.2
+  },
+  "quantile_bounds": [
+    "P10 (alpha=0.10)",
+    "P90 (alpha=0.90)"
+  ]
+}

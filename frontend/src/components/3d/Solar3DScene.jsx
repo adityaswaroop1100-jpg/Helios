@@ -1,373 +1,969 @@
-import React, { useMemo, useRef } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import React, { useMemo, useRef, useState } from 'react';
+import { Canvas, useFrame, extend } from '@react-three/fiber';
 import {
-  OrbitControls, Environment, ContactShadows,
-  Html, Stars, Grid
+  OrbitControls, ContactShadows,
+  Html, Stars, Grid, Text, Sky, Environment,
+  GradientTexture,
 } from '@react-three/drei';
 import * as THREE from 'three';
 import SolarPanel3D from './SolarPanel3D';
 import EnergyParticles from './EnergyParticles';
-import { ArrowRight, ArrowLeft, Check } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Check, Building2 } from 'lucide-react';
 
-function getSunPosition(hour) {
-  if (hour < 5 || hour > 19) return [-30, -8, 15];
-  const t = (hour - 5) / 14;
-  const a = t * Math.PI;
-  return [-Math.cos(a) * 26, Math.sin(a) * 20, 10 + Math.sin(a) * 5];
+const ARRAY_ELEVATION_Y = 0.88;
+
+// ── Dynamic Lighting Conditions ──────────────────────────────────────────────
+function getLightingConditions(hour, cloudShadowFactor = 0, meteoData = null) {
+  const isNight   = hour < 5.5 || hour > 19.5;
+  const isSunrise = !isNight && hour >= 5.5 && hour < 8.0;
+  const isSunset  = !isNight && hour >= 17.0 && hour <= 19.5;
+  const isNoon    = !isNight && hour >= 10.5 && hour <= 14.5;
+
+  let solarFactor = 0;
+  if (!isNight) {
+    solarFactor = Math.sin(((hour - 5.5) / 14) * Math.PI);
+  }
+
+  const meteoMultiplier = meteoData?.totalW > 0
+    ? Math.min(1.5, Math.max(0.4, meteoData.totalW / 700.0)) : 1.1;
+  const effectiveCloud = Math.min(1.0, cloudShadowFactor + (meteoData?.cloudPct ? meteoData.cloudPct / 180 : 0));
+
+  const sunAngle = ((hour - 5.5) / 14) * Math.PI;
+  const sunPosition = isNight
+    ? [25, -15, 12]
+    : [-Math.cos(sunAngle) * 32, Math.max(3.0, Math.sin(sunAngle) * 32), 15 - Math.cos(sunAngle) * 5];
+
+  let skyColor, sunColor, ambientColor, lightIntensity, ambientIntensity, hemiIntensity;
+  let skyInclination, skyAzimuth;
+
+  if (isNight) {
+    skyColor = '#030810'; sunColor = '#506e96'; ambientColor = '#0a1520';
+    lightIntensity = 0.15; ambientIntensity = 0.3; hemiIntensity = 0.2;
+    skyInclination = 0.0; skyAzimuth = 0.25;
+  } else if (isSunrise || isSunset) {
+    skyColor = '#1a2040'; sunColor = '#ff9a3c'; ambientColor = '#ffc88a';
+    const t = Math.max(0.3, solarFactor);
+    lightIntensity = 3.8 * t * (1 - effectiveCloud * 0.5) * meteoMultiplier;
+    ambientIntensity = 1.2 * t * meteoMultiplier; hemiIntensity = 1.0 * t;
+    skyInclination = isSunrise ? 0.505 : 0.495; skyAzimuth = isSunrise ? 0.05 : 0.25;
+  } else if (isNoon) {
+    skyColor = '#0e2a50'; sunColor = '#fffefa'; ambientColor = '#ddf0ff';
+    lightIntensity = 6.5 * (1 - effectiveCloud * 0.65) * meteoMultiplier;
+    ambientIntensity = 2.8 * meteoMultiplier; hemiIntensity = 2.0;
+    skyInclination = 0.49; skyAzimuth = 0.25;
+  } else {
+    skyColor = '#0d2645'; sunColor = '#fff8ee'; ambientColor = '#cce8ff';
+    lightIntensity = 5.2 * Math.max(0.4, solarFactor) * (1 - effectiveCloud * 0.6) * meteoMultiplier;
+    ambientIntensity = 2.2 * Math.max(0.4, solarFactor) * meteoMultiplier;
+    hemiIntensity = 1.7 * Math.max(0.4, solarFactor);
+    skyInclination = 0.495; skyAzimuth = 0.25;
+  }
+
+  return {
+    isNight, isSunrise, isSunset, isNoon, solarFactor, sunPosition,
+    skyColor, sunColor, ambientColor,
+    lightIntensity, ambientIntensity, hemiIntensity,
+    effectiveCloud, meteoMultiplier,
+    skyInclination, skyAzimuth,
+  };
 }
 
+// ── Procedural Sky & Atmosphere ─────────────────────────────────────────────
+function SceneSky({ isNight, isSunrise, isSunset, inclination, azimuth }) {
+  if (isNight) return null;
+  return (
+    <Sky
+      distance={450000}
+      sunPosition={[
+        Math.sin(azimuth * Math.PI * 2) * Math.cos((inclination - 0.5) * Math.PI),
+        Math.sin((inclination - 0.5) * Math.PI),
+        Math.cos(azimuth * Math.PI * 2) * Math.cos((inclination - 0.5) * Math.PI),
+      ]}
+      inclination={inclination}
+      azimuth={azimuth}
+      mieCoefficient={0.006}
+      mieDirectionalG={0.82}
+      rayleigh={isSunrise || isSunset ? 1.8 : 0.9}
+      turbidity={isSunrise || isSunset ? 12 : 5}
+    />
+  );
+}
+
+// ── Camera Tour Controller ───────────────────────────────────────────────────
 function CameraTourController({ tourStep }) {
   const ref = useRef();
   const targets = useMemo(() => [
-    { camPos: [-9, 8.5, 14],  target: [0, 0.5, 0] },
-    { camPos: [-4, 5, 8],     target: [0, 0.5, 0] },
-    { camPos: [3, 3.5, 6],    target: [3.5, 0.2, 0] },
-    { camPos: [6, 3.2, 5],    target: [7.2, 0.6, 0] },
-    { camPos: [7, 2.2, 3.5],  target: [7.2, 1.2, 0] },
+    { camPos: [-12.0, 8.5, 15.0], target: [0, ARRAY_ELEVATION_Y, 0] },
+    { camPos: [-4.5, 4.5, 7.0],   target: [-2.2, ARRAY_ELEVATION_Y, 0] },
+    { camPos: [3.5, 4.0, 7.0],    target: [2.2, ARRAY_ELEVATION_Y, 0] },
+    { camPos: [10.5, 5.0, 6.0],   target: [11.5, 1.2, 0] },
+    { camPos: [-8.5, 4.5, 6.0],   target: [-9.8, 2.2, -3.8] },
+    { camPos: [-11.5, 5.0, 7.0],  target: [-13.5, 1.4, 1.8] },
   ], []);
 
   useFrame((state, delta) => {
     if (!ref.current || tourStep === null || !targets[tourStep]) return;
     const { camPos, target } = targets[tourStep];
-    state.camera.position.lerp(new THREE.Vector3(...camPos), delta * 3.5);
-    ref.current.target.lerp(new THREE.Vector3(...target), delta * 3.5);
+    state.camera.position.lerp(new THREE.Vector3(...camPos), delta * 3.0);
+    ref.current.target.lerp(new THREE.Vector3(...target), delta * 3.0);
     ref.current.update();
   });
 
   return (
-    <OrbitControls ref={ref} enableDamping dampingFactor={0.05}
-      minDistance={5} maxDistance={26}
-      maxPolarAngle={Math.PI / 2 - 0.05}
-      minPolarAngle={Math.PI / 10}
-      target={[0, 0.5, 0]}
+    <OrbitControls ref={ref} enableDamping dampingFactor={0.07}
+      minDistance={4.0} maxDistance={42}
+      maxPolarAngle={Math.PI / 2 - 0.04}
+      minPolarAngle={Math.PI / 14}
+      target={[0, ARRAY_ELEVATION_Y, 0]}
     />
   );
 }
 
-function InverterUnit({ currentKW }) {
-  const isOn = currentKW > 0;
+// ── Premium Terrain Ground ───────────────────────────────────────────────────
+function Terrain({ isNight }) {
   return (
-    <group position={[7.2, 0, 0]}>
-      <mesh position={[0, 0.6, 0]} castShadow receiveShadow>
-        <boxGeometry args={[1.55, 1.2, 1.55]} />
-        <meshStandardMaterial color="#d1d5db" metalness={0.38} roughness={0.58} />
-      </mesh>
-      {Array.from({ length: 12 }, (_, i) => (
-        <mesh key={i} position={[-0.74 + i * 0.065, 0.7, -0.5]} castShadow>
-          <boxGeometry args={[0.012, 0.88, 0.36]} />
-          <meshStandardMaterial color="#9ca3af" metalness={0.72} roughness={0.30} />
-        </mesh>
-      ))}
-      <mesh position={[0, 0.68, 0.784]}>
-        <boxGeometry args={[1.0, 0.52, 0.018]} />
-        <meshStandardMaterial color="#111827" metalness={0.2} roughness={0.8} />
-      </mesh>
-      <mesh position={[0, 0.68, 0.796]}>
-        <planeGeometry args={[0.88, 0.42]} />
+    <group>
+      {/* Base field — tinted grass */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.005, 0]} receiveShadow>
+        <planeGeometry args={[100, 100, 1, 1]} />
         <meshStandardMaterial
-          color="#0c4a6e"
-          emissive={isOn ? '#0284c7' : '#020617'}
-          emissiveIntensity={isOn ? 0.8 : 0.04}
+          color={isNight ? '#060c08' : '#0e2010'}
+          roughness={0.98}
+          metalness={0.0}
         />
       </mesh>
-      <mesh position={[0, 1.24, 0]}>
-        <cylinderGeometry args={[0.065, 0.065, 0.12, 16]} />
-        <meshStandardMaterial
-          color={isOn ? '#10b981' : '#4b5563'}
-          emissive={isOn ? '#10b981' : '#000'}
-          emissiveIntensity={isOn ? 1.8 : 0}
-          roughness={0.1} metalness={0.3}
-        />
+
+      {/* Gravel / compacted access road pad under array */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.002, 0]} receiveShadow>
+        <planeGeometry args={[28, 16]} />
+        <meshStandardMaterial color={isNight ? '#121a14' : '#192818'} roughness={0.97} metalness={0.01} />
       </mesh>
-      {[-0.45, 0.45].map((x, i) => (
-        <mesh key={i} position={[x, 0.04, 0]} receiveShadow>
-          <boxGeometry args={[0.28, 0.08, 1.0]} />
-          <meshStandardMaterial color="#374151" metalness={0.8} roughness={0.35} />
-        </mesh>
-      ))}
+
+      {/* Gravel service road strip */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[2, 0.001, 8]}>
+        <planeGeometry args={[5, 20]} />
+        <meshStandardMaterial color={isNight ? '#1a1a1a' : '#2a2a2a'} roughness={0.95} metalness={0.01} />
+      </mesh>
+
+      {/* Technical Engineering Grid */}
+      <Grid
+        position={[0, 0.001, 0]}
+        args={[100, 100]}
+        cellSize={1.5}
+        cellThickness={0.2}
+        cellColor={isNight ? '#0d2218' : '#162e1e'}
+        sectionSize={6}
+        sectionThickness={0.5}
+        sectionColor={isNight ? '#153622' : '#1e5030'}
+        fadeDistance={48}
+        fadeStrength={1.5}
+        infiniteGrid
+      />
     </group>
   );
 }
 
-function MountingRails() {
+// ── Galvanized Steel Mounting Racking ────────────────────────────────────────
+function MountingRacking({ rowZPositions = [-3.45, -1.15, 1.15, 3.45], rowLength = 19.5 }) {
+  const pipeColor   = '#7c8fa0';
+  const steelGray   = '#586474';
+  const concreteCol = '#3d4a56';
+
   return (
     <group>
-      {[-2.1, 0, 2.1].map((z, rowIdx) => (
-        <group key={rowIdx}>
-          {[-0.28, 0.28].map((off, ri) => (
-            <mesh key={ri} position={[0, 0.06, z + off * 0.9]} receiveShadow castShadow>
-              <boxGeometry args={[11.5, 0.04, 0.04]} />
-              <meshStandardMaterial color="#475569" metalness={0.88} roughness={0.22} />
+      {rowZPositions.map((z, rowIdx) => (
+        <group key={`row-rack-${rowIdx}`}>
+          {/* Torque tube — square hollow section with seam highlight */}
+          <mesh position={[0, ARRAY_ELEVATION_Y, z]} rotation={[0, 0, Math.PI / 2]} castShadow receiveShadow>
+            <cylinderGeometry args={[0.052, 0.052, rowLength, 12]} />
+            <meshStandardMaterial color={pipeColor} metalness={0.94} roughness={0.15} />
+          </mesh>
+
+          {/* Torque tube galvanized sheen seam */}
+          <mesh position={[0, ARRAY_ELEVATION_Y + 0.052, z]} rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.004, 0.004, rowLength, 6]} />
+            <meshStandardMaterial color="#9ab0c0" metalness={0.9} roughness={0.2} />
+          </mesh>
+
+          {/* Central motor actuator / slew ring */}
+          <group position={[0, ARRAY_ELEVATION_Y, z]}>
+            <mesh castShadow>
+              <boxGeometry args={[0.28, 0.24, 0.24]} />
+              <meshStandardMaterial color="#1e2c3a" metalness={0.85} roughness={0.28} />
+            </mesh>
+            {/* motor bolts */}
+            {[-0.1, 0.1].map((bx, bi) => (
+              <mesh key={`bolt-${bi}`} position={[bx, 0.13, 0]}>
+                <cylinderGeometry args={[0.015, 0.015, 0.04, 8]} />
+                <meshStandardMaterial color="#4a5568" metalness={0.9} roughness={0.2} />
+              </mesh>
+            ))}
+          </group>
+
+          {/* Dual purlin channel rails */}
+          {[-0.36, 0.36].map((off, ri) => (
+            <mesh key={`purlin-${ri}`} position={[0, ARRAY_ELEVATION_Y + 0.04, z + off]} castShadow>
+              <boxGeometry args={[rowLength - 0.5, 0.026, 0.036]} />
+              <meshStandardMaterial color={steelGray} metalness={0.9} roughness={0.22} />
             </mesh>
           ))}
-          {[-3.6, -1.2, 1.2, 3.6].map((x, ci) => (
-            <mesh key={ci} position={[x, 0.06, z]} castShadow>
-              <boxGeometry args={[0.04, 0.04, 1.0]} />
-              <meshStandardMaterial color="#334155" metalness={0.88} roughness={0.22} />
-            </mesh>
+
+          {/* Concrete pier foundations + galvanized posts */}
+          {[-8.4, -6.0, -3.6, -1.2, 1.2, 3.6, 6.0, 8.4].map((x, ci) => (
+            <group key={`post-${ci}`} position={[x, 0, z]}>
+              {/* Concrete footing */}
+              <mesh position={[0, 0.04, 0]} receiveShadow>
+                <boxGeometry args={[0.32, 0.08, 0.32]} />
+                <meshStandardMaterial color={concreteCol} roughness={0.95} metalness={0.02} />
+              </mesh>
+              {/* Anchor bolt pattern */}
+              {[[-0.1,-0.1],[-0.1,0.1],[0.1,-0.1],[0.1,0.1]].map(([ax,az], ai) => (
+                <mesh key={`ab-${ai}`} position={[ax, 0.08, az]}>
+                  <cylinderGeometry args={[0.008, 0.008, 0.04, 6]} />
+                  <meshStandardMaterial color="#8a9ab0" metalness={0.95} roughness={0.15} />
+                </mesh>
+              ))}
+              {/* Galvanized post */}
+              <mesh position={[0, ARRAY_ELEVATION_Y / 2 + 0.05, 0]} castShadow>
+                <cylinderGeometry args={[0.042, 0.048, ARRAY_ELEVATION_Y, 12]} />
+                <meshStandardMaterial color={pipeColor} metalness={0.92} roughness={0.18} />
+              </mesh>
+            </group>
           ))}
         </group>
       ))}
-      {[-3.6, -1.2, 1.2, 3.6].map((x, ci) =>
-        [-2.1, 2.1].map((z, ri) => (
-          <mesh key={`${ci}-${ri}`} position={[x, 0.18, z]} castShadow>
-            <cylinderGeometry args={[0.028, 0.032, 0.36, 8]} />
-            <meshStandardMaterial color="#1e293b" metalness={0.85} roughness={0.28} />
-          </mesh>
-        ))
-      )}
     </group>
   );
 }
 
-export default function Solar3DScene({
-  hourOfDay,
-  panelDataList,
-  selectedPanel,
-  onSelectPanel,
-  currentKW,
-  tourStep,
-  onNextTourStep,
-  onPrevTourStep,
-  onEndTour,
-  activeFormulaHighlight,
-  onFormulaHover,
-  panelTiltDeg = 30,
-  cloudShadowFactor = 0,
-  faultedPanels = {},
-  onSetPanelFault,
-}) {
-  const sunPosition    = useMemo(() => getSunPosition(hourOfDay), [hourOfDay]);
-  const isNight        = hourOfDay < 6 || hourOfDay > 18;
-  const sunAltitudeDeg = isNight ? 0 : Math.round(Math.sin(((hourOfDay - 5) / 14) * Math.PI) * 72);
-  const isCloudActive  = cloudShadowFactor > 0.05;
-  const lightIntensity = isNight ? 0.04 : (1.8 * (1 - cloudShadowFactor * 0.7));
-  const isGoldenHour   = !isNight && (hourOfDay < 9 || hourOfDay > 16);
-  const sunColor       = isGoldenHour ? '#ffb060' : '#fffdf5';
-  const bgColor        = isNight ? '#050608' : '#0c1220';
+// ── SCADA Weather Station Mast ───────────────────────────────────────────────
+function WeatherStationMast({ isNight }) {
+  const anemRef = useRef();
+  useFrame((_, delta) => {
+    if (anemRef.current) anemRef.current.rotation.y += delta * 5.0;
+  });
 
-  const gridPositions = useMemo(() => {
-    const rows = 3, cols = 4, colSpacing = 2.4, rowSpacing = 2.1;
-    const startX = -((cols - 1) * colSpacing) / 2;
-    const startZ = -((rows - 1) * rowSpacing) / 2;
-    return Array.from({ length: rows * cols }, (_, i) => ({
-      id: i + 1,
-      pos: [startX + (i % cols) * colSpacing, 0.45, startZ + Math.floor(i / cols) * rowSpacing],
-    }));
-  }, []);
+  const mastColor = '#8da0b0';
+  return (
+    <group position={[-9.8, 0, -3.8]}>
+      {/* Concrete base */}
+      <mesh position={[0, 0.07, 0]} receiveShadow>
+        <boxGeometry args={[0.9, 0.14, 0.9]} />
+        <meshStandardMaterial color="#3d4a56" roughness={0.95} metalness={0.02} />
+      </mesh>
 
-  const tourCallouts = [
-    { title: 'Step 1: Sun Position',         text: `Sun at ${sunAltitudeDeg}°. HDRI environment drives glass reflections. Drag time slider to move the sun across the sky.`, anchorPos: [0, 3.0, 0] },
-    { title: 'Step 2: PV Glass Material',    text: `12 modules at ${panelTiltDeg}° tilt. meshPhysicalMaterial with clearcoat=1.0 and ior=1.52 — realism comes from environment reflections.`, anchorPos: [0, 2.5, 0] },
-    { title: 'Step 3: Aluminum Rail System', text: 'Longitudinal rails, lateral cross-braces every 2.4 m, and ground anchor posts — mirrors real ground-mount racking geometry.', anchorPos: [3.5, 1.4, 0] },
-    { title: 'Step 4: Inverter Unit',        text: 'Matte metal casing with 12 extruded rear heatsink fins, recessed LCD screen, mounting foot pads, and green status LED.', anchorPos: [7.2, 1.8, 0] },
-    { title: 'Step 5: Fault Injection',      text: 'Click any module to open the telemetry inspector. Inject Underperforming (45% output) or Offline (0 kW) faults.', anchorPos: [0, 2.5, 0] },
-  ];
+      {/* Main tapered mast */}
+      <mesh position={[0, 2.0, 0]} castShadow>
+        <cylinderGeometry args={[0.028, 0.044, 4.0, 14]} />
+        <meshStandardMaterial color={mastColor} metalness={0.93} roughness={0.16} />
+      </mesh>
+
+      {/* Cross boom */}
+      <mesh position={[0, 3.8, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+        <cylinderGeometry args={[0.013, 0.013, 1.0, 8]} />
+        <meshStandardMaterial color={mastColor} metalness={0.93} roughness={0.16} />
+      </mesh>
+
+      {/* Cup anemometer */}
+      <group position={[-0.46, 3.85, 0]}>
+        <mesh position={[0, -0.04, 0]}>
+          <cylinderGeometry args={[0.009, 0.009, 0.09, 8]} />
+          <meshStandardMaterial color="#2d3a48" />
+        </mesh>
+        <group ref={anemRef}>
+          {[0, (2 * Math.PI) / 3, (4 * Math.PI) / 3].map((angle, i) => (
+            <group key={`cup-${i}`} rotation={[0, angle, 0]}>
+              <mesh position={[0.06, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+                <cylinderGeometry args={[0.003, 0.003, 0.12, 6]} />
+                <meshStandardMaterial color="#5a6a7a" />
+              </mesh>
+              <mesh position={[0.12, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+                <sphereGeometry args={[0.022, 12, 12, 0, Math.PI]} />
+                <meshStandardMaterial color="#0f172a" roughness={0.4} />
+              </mesh>
+            </group>
+          ))}
+        </group>
+      </group>
+
+      {/* Pyranometer dome */}
+      <group position={[0.46, 3.82, 0]}>
+        <mesh castShadow>
+          <cylinderGeometry args={[0.038, 0.038, 0.052, 16]} />
+          <meshStandardMaterial color="#f0f4f8" metalness={0.75} roughness={0.2} />
+        </mesh>
+        <mesh position={[0, 0.032, 0]}>
+          <sphereGeometry args={[0.024, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
+          <meshPhysicalMaterial color="#ffffff" clearcoat={1.0} roughness={0.04} transparent opacity={0.9} />
+        </mesh>
+      </group>
+
+      {/* Radiation shields (louvered temperature sensor) */}
+      <group position={[0, 2.6, 0.14]}>
+        {Array.from({ length: 6 }, (_, i) => (
+          <mesh key={`s-${i}`} position={[0, i * 0.035, 0]}>
+            <cylinderGeometry args={[0.06, 0.05, 0.014, 14]} />
+            <meshStandardMaterial color="#f0f4f8" roughness={0.55} />
+          </mesh>
+        ))}
+      </group>
+
+      {/* Warning beacon light */}
+      <mesh position={[0, 4.06, 0]}>
+        <sphereGeometry args={[0.028, 12, 12]} />
+        <meshStandardMaterial
+          color="#ef4444"
+          emissive="#ef4444"
+          emissiveIntensity={isNight ? 3.5 : 0.5}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+// ── Industrial Central Inverter Substation ───────────────────────────────────
+function InverterSubstation({ currentKW }) {
+  const isOn = currentKW > 0;
+  const fanRef1 = useRef();
+  const fanRef2 = useRef();
+
+  useFrame((_, delta) => {
+    if (isOn) {
+      if (fanRef1.current) fanRef1.current.rotation.z += delta * 16;
+      if (fanRef2.current) fanRef2.current.rotation.z += delta * 16;
+    }
+  });
+
+  const bodyColor = '#b8c8d8';
+  const darkMetal = '#1e2c3a';
+  const steelCol  = '#3d5060';
 
   return (
-    <div className="w-full h-[520px] sm:h-[580px] rounded-sm overflow-hidden relative border border-[#2a2d32]">
+    <group position={[11.5, 0, 0]}>
+      {/* Concrete equipment skid */}
+      <mesh position={[0, 0.09, 0]} receiveShadow>
+        <boxGeometry args={[3.8, 0.18, 3.6]} />
+        <meshStandardMaterial color="#3a464e" roughness={0.94} />
+      </mesh>
 
-      {/* CSS vignette overlay — no postprocessing needed */}
-      <div
-        className="absolute inset-0 z-10 pointer-events-none rounded-sm"
-        style={{ boxShadow: 'inset 0 0 120px 40px rgba(0,0,0,0.72)' }}
-      />
+      {/* Painted yellow cable trench strips */}
+      {[[-1.8, 0], [1.8, 0]].map(([tx, tz], i) => (
+        <mesh key={`stripe-${i}`} position={[tx, 0.178, tz]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[0.12, 3.5]} />
+          <meshBasicMaterial color="#f59e0b" />
+        </mesh>
+      ))}
 
-      {/* ── HUD overlay ── */}
-      <div className="absolute top-3 left-3 right-3 z-20 flex flex-wrap items-center justify-between gap-2 pointer-events-none select-none">
-        <div className="bg-[#141619]/90 border border-[#2a2d32] px-3.5 py-2 rounded-sm text-xs space-y-0.5 pointer-events-auto">
-          <div className="font-bold text-[#c7ccd4] tracking-widest uppercase text-[11px] flex items-center gap-2 font-mono">
-            <span className="w-2.5 h-1.5 rounded-none bg-[#f0a830]" />
-            HELIOS — 48.0 kW PHOTOVOLTAIC ARRAY
-          </div>
-          <div className="text-[10px] text-[#9ca3af] font-mono tracking-wider">
-            4×3 GRID • {panelTiltDeg}° TILT ANGLE • SOUTH-FACING
-            {isCloudActive && <span className="ml-2 text-[#f59e0b]">☁ CLOUD ACTIVE (-{Math.round(cloudShadowFactor * 100)}%)</span>}
-          </div>
-        </div>
+      {/* Main inverter housing */}
+      <group position={[-0.4, 1.22, 0]}>
+        {/* Body */}
+        <mesh castShadow receiveShadow>
+          <boxGeometry args={[2.3, 1.96, 1.85]} />
+          <meshStandardMaterial color={bodyColor} metalness={0.72} roughness={0.28} />
+        </mesh>
 
-        <div className="bg-[#141619]/90 border border-[#2a2d32] rounded-sm flex items-center divide-x divide-[#2a2d32] pointer-events-auto">
-          <div
-            onMouseEnter={() => onFormulaHover('kw')}
-            onMouseLeave={() => onFormulaHover(null)}
-            className={`px-3.5 py-1.5 text-xs font-mono cursor-pointer relative ${activeFormulaHighlight === 'kw' ? 'bg-[#1f2328]' : ''}`}
-          >
-            <span className="text-[#9ca3af] text-[10px] uppercase tracking-wider">ARRAY OUTPUT:</span>{' '}
-            <span className={`font-bold text-sm tabular-nums ${isCloudActive ? 'text-[#f59e0b]' : 'text-[#f0a830]'}`}>{currentKW} kW</span>
-            {activeFormulaHighlight === 'kw' && (
-              <div className="absolute right-0 top-10 z-30 w-72 p-3 bg-[#141619] border border-[#f0a830] rounded-sm text-xs text-[#c7ccd4] font-sans">
-                <div className="font-bold text-[#f0a830] pb-1 mb-1 font-mono text-[11px] uppercase tracking-wider border-b border-[#2a2d32]">FORMULA: ARRAY POWER</div>
-                <div className="font-mono text-[11px] bg-[#0b0c0e] p-1.5 rounded-sm text-[#f0a830]">P(t) = 48kW × SolarFactor^1.3 × (1-Cloud) × TiltEff</div>
-              </div>
-            )}
-          </div>
-          <div
-            onMouseEnter={() => onFormulaHover('sun')}
-            onMouseLeave={() => onFormulaHover(null)}
-            className={`px-3.5 py-1.5 text-xs font-mono cursor-pointer relative ${activeFormulaHighlight === 'sun' ? 'bg-[#1f2328]' : ''}`}
-          >
-            <span className="text-[#9ca3af] text-[10px] uppercase tracking-wider">SUN ALTITUDE:</span>{' '}
-            <span className="font-bold text-[#c7ccd4] text-sm tabular-nums">{sunAltitudeDeg}°</span>
-            {activeFormulaHighlight === 'sun' && (
-              <div className="absolute right-0 top-10 z-30 w-72 p-3 bg-[#141619] border border-[#c7ccd4] rounded-sm text-xs text-[#c7ccd4] font-sans">
-                <div className="font-bold text-[#c7ccd4] pb-1 mb-1 font-mono text-[11px] uppercase tracking-wider border-b border-[#2a2d32]">FORMULA: ZENITH ANGLE</div>
-                <div className="font-mono text-[11px] bg-[#0b0c0e] p-1.5 rounded-sm text-[#c7ccd4]">α(t) = sin((t-6)/12 × π) × 72°</div>
-              </div>
-            )}
-          </div>
-          {Object.keys(faultedPanels).length > 0 && (
-            <div className="px-3.5 py-1.5 text-xs font-mono">
-              <span className="text-[#9ca3af] text-[10px] uppercase tracking-wider">FAULTS:</span>{' '}
-              <span className="font-bold text-[#ef4444] tabular-nums">{Object.keys(faultedPanels).length} MODULE{Object.keys(faultedPanels).length > 1 ? 'S' : ''}</span>
-            </div>
+        {/* Rear louvered vents */}
+        {[-0.92, 0.92].map((sz, si) => (
+          <group key={`vent-${si}`} position={[0, 0, sz]}>
+            {Array.from({ length: 8 }, (_, vi) => (
+              <mesh key={`louver-${vi}`} position={[0, -0.6 + vi * 0.18, sz < 0 ? -0.004 : 0.004]}>
+                <boxGeometry args={[1.8, 0.04, 0.015]} />
+                <meshStandardMaterial color={darkMetal} metalness={0.9} roughness={0.3} />
+              </mesh>
+            ))}
+          </group>
+        ))}
+
+        {/* Front face panel — dark brushed steel */}
+        <mesh position={[0, 0, 0.925]}>
+          <boxGeometry args={[2.28, 1.94, 0.018]} />
+          <meshStandardMaterial color="#1a2534" metalness={0.88} roughness={0.22} />
+        </mesh>
+
+        {/* Front top exhaust fans */}
+        {[-0.6, 0.6].map((fx, fi) => (
+          <group key={`fan-${fi}`} position={[fx, 0.78, 0.935]}>
+            {/* Fan housing ring */}
+            <mesh castShadow>
+              <torusGeometry args={[0.26, 0.04, 10, 24]} />
+              <meshStandardMaterial color={steelCol} metalness={0.85} roughness={0.28} />
+            </mesh>
+            {/* Guard grille */}
+            {[0, Math.PI / 4, Math.PI / 2, (3 * Math.PI) / 4].map((ang, gi) => (
+              <mesh key={`grille-${gi}`} rotation={[0, 0, ang]}>
+                <boxGeometry args={[0.52, 0.014, 0.012]} />
+                <meshStandardMaterial color={darkMetal} metalness={0.9} roughness={0.2} />
+              </mesh>
+            ))}
+            {/* Spinning blades */}
+            <group ref={fi === 0 ? fanRef1 : fanRef2} rotation={[0, 0, 0]}>
+              {[0, Math.PI / 3, (2*Math.PI)/3, Math.PI, (4*Math.PI)/3, (5*Math.PI)/3].map((ang, bi) => (
+                <mesh key={`blade-${bi}`} rotation={[0, 0, ang]} position={[0, 0, 0.009]}>
+                  <boxGeometry args={[0.22, 0.038, 0.006]} />
+                  <meshStandardMaterial color="#0f1c28" metalness={0.8} roughness={0.25} />
+                </mesh>
+              ))}
+            </group>
+          </group>
+        ))}
+
+        {/* LCD telemetry display bezel */}
+        <group position={[0, 0.12, 0.944]}>
+          <mesh castShadow>
+            <boxGeometry args={[1.15, 0.58, 0.038]} />
+            <meshStandardMaterial color="#0a0f18" metalness={0.92} roughness={0.18} />
+          </mesh>
+          {/* Screen */}
+          <mesh position={[0, 0, 0.020]}>
+            <planeGeometry args={[1.06, 0.50]} />
+            <meshStandardMaterial color="#020614" emissive="#020614" emissiveIntensity={1} />
+          </mesh>
+          {isOn && (
+            <group position={[0, 0, 0.024]}>
+              <Text position={[-0.48, 0.17, 0]} color="#38bdf8" fontSize={0.048} anchorX="left" anchorY="middle">
+                HELIOS SCADA · 1500V DC
+              </Text>
+              <Text position={[-0.48, 0.07, 0]} color="#64748b" fontSize={0.038} anchorX="left" anchorY="middle">
+                AC OUTPUT — GRID TIED
+              </Text>
+              <Text position={[-0.48, -0.08, 0]} color="#10b981" fontSize={0.115} anchorX="left" anchorY="middle">
+                {currentKW} kW
+              </Text>
+            </group>
           )}
-        </div>
-      </div>
+        </group>
 
-      {/* ── R3F Canvas — NO EffectComposer ── */}
+        {/* LED status strip */}
+        <group position={[0, -0.22, 0.945]}>
+          <mesh>
+            <boxGeometry args={[0.5, 0.055, 0.018]} />
+            <meshStandardMaterial color={darkMetal} />
+          </mesh>
+          {[-0.16, 0, 0.16].map((x, i) => (
+            <mesh key={`led-${i}`} position={[x, 0, 0.012]}>
+              <sphereGeometry args={[0.016, 12, 12]} />
+              <meshStandardMaterial
+                color={isOn ? (i === 0 ? '#10b981' : i === 1 ? '#f59e0b' : '#3b82f6') : '#1e2a38'}
+                emissive={isOn ? (i === 0 ? '#10b981' : i === 1 ? '#f59e0b' : '#3b82f6') : '#000'}
+                emissiveIntensity={isOn ? 2.8 : 0}
+              />
+            </mesh>
+          ))}
+        </group>
+
+        {/* Lower maintenance doors */}
+        {[-0.55, 0.55].map((dx, di) => (
+          <group key={`door-${di}`} position={[dx, -0.58, 0.935]}>
+            <mesh castShadow>
+              <boxGeometry args={[0.95, 0.68, 0.030]} />
+              <meshStandardMaterial color="#c8d8e8" metalness={0.76} roughness={0.28} />
+            </mesh>
+            {/* Ventilation louvres on door */}
+            {Array.from({ length: 4 }, (_, li) => (
+              <mesh key={`dl-${li}`} position={[0, -0.12 + li * 0.09, 0.016]}>
+                <boxGeometry args={[0.72, 0.018, 0.008]} />
+                <meshStandardMaterial color={darkMetal} metalness={0.9} roughness={0.25} />
+              </mesh>
+            ))}
+            <mesh position={[di === 0 ? 0.36 : -0.36, 0, 0.022]} castShadow>
+              <boxGeometry args={[0.028, 0.11, 0.018]} />
+              <meshStandardMaterial color="#2a3a4a" metalness={0.9} />
+            </mesh>
+          </group>
+        ))}
+
+        {/* Warning label plate */}
+        <mesh position={[0, -0.93, 0.936]}>
+          <planeGeometry args={[0.4, 0.11]} />
+          <meshBasicMaterial color="#f59e0b" />
+        </mesh>
+      </group>
+
+      {/* Medium voltage step-up transformer */}
+      <group position={[1.15, 0.98, 0]}>
+        <mesh castShadow receiveShadow>
+          <boxGeometry args={[1.05, 1.65, 1.45]} />
+          <meshStandardMaterial color={steelCol} metalness={0.82} roughness={0.28} />
+        </mesh>
+        {/* Oil cooling radiator banks */}
+        {[-0.74, 0.74].map((rz, ri) => (
+          <group key={`rad-${ri}`} position={[0, -0.08, rz]}>
+            {Array.from({ length: 7 }, (_, fi) => (
+              <mesh key={`fin-${fi}`} position={[(fi - 3) * 0.14, 0, 0]}>
+                <boxGeometry args={[0.022, 1.30, 0.12]} />
+                <meshStandardMaterial color="#2a3a4a" metalness={0.92} roughness={0.18} />
+              </mesh>
+            ))}
+          </group>
+        ))}
+        {/* HV porcelain bushings */}
+        {[-0.32, 0, 0.32].map((bx, bi) => (
+          <group key={`bushing-${bi}`} position={[bx, 0.95, 0]}>
+            {Array.from({ length: 5 }, (_, i) => (
+              <mesh key={`disc-${i}`} position={[0, i * 0.055, 0]}>
+                <cylinderGeometry args={[0.048, 0.065, 0.036, 14]} />
+                <meshStandardMaterial color="#6b3a10" roughness={0.18} metalness={0.05} />
+              </mesh>
+            ))}
+            <mesh position={[0, 0.30, 0]}>
+              <cylinderGeometry args={[0.013, 0.013, 0.14, 8]} />
+              <meshStandardMaterial color="#e8edf2" metalness={0.92} roughness={0.12} />
+            </mesh>
+          </group>
+        ))}
+        {/* Conservator expansion tank */}
+        <mesh position={[0, 1.02, 0]} castShadow>
+          <cylinderGeometry args={[0.16, 0.16, 0.55, 16]} rotation={[0, 0, Math.PI / 2]} />
+          <meshStandardMaterial color={steelCol} metalness={0.85} roughness={0.25} />
+        </mesh>
+      </group>
+
+      {/* DC cable tray from array */}
+      <mesh position={[-1.85, 0.32, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <boxGeometry args={[0.55, 0.2, 0.1]} />
+        <meshStandardMaterial color={darkMetal} metalness={0.85} roughness={0.28} />
+      </mesh>
+      {[-0.06, 0.06].map((z, i) => (
+        <mesh key={`dc-${i}`} position={[-1.5, 0.32, z]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.022, 0.022, 1.5, 10]} />
+          <meshStandardMaterial color={i === 0 ? '#b91c1c' : '#0f172a'} metalness={0.4} roughness={0.5} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// ── SCADA Operations Building ────────────────────────────────────────────────
+function ControlRoomBuilding({ onOpenControlRoom, isNight }) {
+  const [hovered, setHovered] = useState(false);
+
+  const wallColor  = hovered ? '#1e3a8a' : '#1a2840';
+  const glowEmit   = hovered ? 0.5 : isNight ? 0.35 : 0.08;
+
+  return (
+    <group
+      position={[-13.5, 0, 1.8]}
+      onClick={e => { e.stopPropagation(); onOpenControlRoom(); }}
+      onPointerOver={e => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'pointer'; }}
+      onPointerOut={() => { setHovered(false); document.body.style.cursor = 'auto'; }}
+    >
+      {/* Foundation / perimeter concrete pad */}
+      <mesh position={[0, 0.09, 0]} receiveShadow>
+        <boxGeometry args={[4.6, 0.18, 5.4]} />
+        <meshStandardMaterial color="#2e3d4a" roughness={0.93} metalness={0.02} />
+      </mesh>
+
+      {/* Safety line around perimeter */}
+      {[[-2.2, 0], [2.2, 0], [0, -2.6], [0, 2.6]].map(([px, pz], i) => (
+        <mesh key={`safeline-${i}`} position={[px, 0.178, pz]}
+          rotation={[-Math.PI / 2, 0, i < 2 ? Math.PI / 2 : 0]}>
+          <planeGeometry args={[0.1, i < 2 ? 5.4 : 4.6]} />
+          <meshBasicMaterial color="#f59e0b" />
+        </mesh>
+      ))}
+
+      {/* Main building body — dark brushed cladding */}
+      <mesh position={[0, 1.55, 0]} castShadow receiveShadow>
+        <boxGeometry args={[3.8, 2.7, 4.8]} />
+        <meshStandardMaterial color={wallColor} metalness={0.88} roughness={0.22} />
+      </mesh>
+
+      {/* Architectural reveal band mid-height */}
+      <mesh position={[0, 1.0, 0]} castShadow>
+        <boxGeometry args={[3.84, 0.08, 4.84]} />
+        <meshStandardMaterial color="#0a1220" metalness={0.9} roughness={0.15} />
+      </mesh>
+
+      {/* Parapet roof cap */}
+      <mesh position={[0, 2.96, 0]} castShadow>
+        <boxGeometry args={[4.0, 0.12, 5.0]} />
+        <meshStandardMaterial color="#0e1c2c" metalness={0.85} roughness={0.2} />
+      </mesh>
+
+      {/* Panoramic NOC glazing — east face */}
+      <mesh position={[1.91, 1.65, 0]} rotation={[0, Math.PI / 2, 0]}>
+        <planeGeometry args={[3.4, 1.5]} />
+        <meshPhysicalMaterial
+          color="#38bdf8"
+          roughness={0.06}
+          metalness={0.95}
+          clearcoat={1.0}
+          transparent
+          opacity={0.65}
+          emissive="#0ea5e9"
+          emissiveIntensity={glowEmit}
+        />
+      </mesh>
+      {/* Window mullions */}
+      {[-1.1, 0, 1.1].map((wz, wi) => (
+        <mesh key={`mull-${wi}`} position={[1.925, 1.65, wz]}>
+          <boxGeometry args={[0.04, 1.5, 0.06]} />
+          <meshStandardMaterial color="#0e1c2c" metalness={0.9} roughness={0.15} />
+        </mesh>
+      ))}
+
+      {/* Side accent window */}
+      <mesh position={[0, 1.75, 2.41]} rotation={[0, 0, 0]}>
+        <planeGeometry args={[1.8, 0.9]} />
+        <meshPhysicalMaterial
+          color="#38bdf8"
+          roughness={0.06}
+          metalness={0.95}
+          clearcoat={1.0}
+          transparent
+          opacity={0.55}
+          emissive="#0ea5e9"
+          emissiveIntensity={glowEmit * 0.7}
+        />
+      </mesh>
+
+      {/* Steel entrance canopy */}
+      <mesh position={[0, 2.25, 2.43]} castShadow>
+        <boxGeometry args={[2.0, 0.06, 0.9]} />
+        <meshStandardMaterial color="#0a1220" metalness={0.9} roughness={0.18} />
+      </mesh>
+      {[-0.8, 0.8].map((cx, ci) => (
+        <mesh key={`canopy-post-${ci}`} position={[cx, 1.9, 2.43]} castShadow>
+          <boxGeometry args={[0.06, 0.7, 0.06]} />
+          <meshStandardMaterial color="#1a2840" metalness={0.88} roughness={0.2} />
+        </mesh>
+      ))}
+
+      {/* Entrance door */}
+      <mesh position={[0, 1.08, 2.41]} castShadow>
+        <boxGeometry args={[1.05, 1.98, 0.025]} />
+        <meshStandardMaterial color="#0a1220" metalness={0.78} roughness={0.18} />
+      </mesh>
+      {/* Door handle bar */}
+      <mesh position={[0.38, 1.08, 2.424]} castShadow>
+        <cylinderGeometry args={[0.018, 0.018, 0.55, 10]} rotation={[0, 0, Math.PI / 2]} />
+        <meshStandardMaterial color="#10b981" metalness={0.95} roughness={0.1} emissive="#10b981" emissiveIntensity={0.4} />
+      </mesh>
+
+      {/* Roof HVAC unit */}
+      <mesh position={[-0.9, 3.08, -0.9]} castShadow>
+        <boxGeometry args={[1.4, 0.5, 1.4]} />
+        <meshStandardMaterial color="#2a3a4a" metalness={0.82} roughness={0.3} />
+      </mesh>
+      {/* HVAC fan grille */}
+      <mesh position={[-0.9, 3.34, -0.9]}>
+        <cylinderGeometry args={[0.5, 0.5, 0.02, 20]} />
+        <meshStandardMaterial color="#1a2434" metalness={0.88} roughness={0.2} />
+      </mesh>
+
+      {/* Satellite dish */}
+      <group position={[0.9, 3.0, 0.9]}>
+        <mesh position={[0, 0.42, 0]} castShadow>
+          <cylinderGeometry args={[0.022, 0.022, 0.85, 8]} />
+          <meshStandardMaterial color="#8da0b0" metalness={0.92} roughness={0.18} />
+        </mesh>
+        <mesh position={[0, 0.84, 0]} rotation={[0.45, 0.6, 0]} castShadow>
+          <sphereGeometry args={[0.50, 18, 18, 0, Math.PI * 2, 0, Math.PI / 2]} />
+          <meshStandardMaterial color="#f0f4f8" metalness={0.82} roughness={0.2} side={THREE.DoubleSide} />
+        </mesh>
+        {/* Dish LNB arm */}
+        <mesh position={[0, 1.1, 0.35]} rotation={[0.45, 0, 0]} castShadow>
+          <cylinderGeometry args={[0.01, 0.01, 0.5, 6]} />
+          <meshStandardMaterial color="#8da0b0" metalness={0.9} />
+        </mesh>
+      </group>
+
+      {/* Ground-level security bollards */}
+      {[-1.6, -0.8, 0.8, 1.6].map((bx, bi) => (
+        <group key={`bollard-${bi}`} position={[bx, 0, 2.8]}>
+          <mesh position={[0, 0.35, 0]} castShadow>
+            <cylinderGeometry args={[0.06, 0.07, 0.7, 10]} />
+            <meshStandardMaterial color="#1a2840" metalness={0.88} roughness={0.22} />
+          </mesh>
+          <mesh position={[0, 0.72, 0]}>
+            <sphereGeometry args={[0.065, 10, 10]} />
+            <meshStandardMaterial color="#f59e0b" emissive="#f59e0b" emissiveIntensity={isNight ? 1.5 : 0.1} />
+          </mesh>
+        </group>
+      ))}
+
+      {/* Hover / entry tooltip */}
+      <Html position={[0, 3.7, 0]} center distanceFactor={11} zIndexRange={[100, 0]}>
+        <button
+          onClick={e => { e.stopPropagation(); onOpenControlRoom(); }}
+          className={`px-3.5 py-1.5 rounded-xl text-2xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-2xl select-none ${
+            hovered
+              ? 'bg-sky-500 text-slate-950 scale-105 ring-4 ring-sky-400/30'
+              : 'glass-panel text-sky-400 border border-sky-500/40 hover:text-white'
+          }`}
+        >
+          <Building2 size={13} className="text-emerald-400" />
+          <span>SCADA Control Center</span>
+        </button>
+      </Html>
+    </group>
+  );
+}
+
+// ── DC Cable Tray Bus ─────────────────────────────────────────────────────────
+function DCBusCables() {
+  return (
+    <group>
+      {/* Underground cable trench marker strip */}
+      <mesh position={[5.8, 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[11.5, 0.25]} />
+        <meshStandardMaterial color="#1e2c3a" roughness={0.95} />
+      </mesh>
+      {/* Cable conduit outline */}
+      {[-0.06, 0.06].map((z, i) => (
+        <mesh key={`cable-${i}`} position={[5.8, 0.06, z]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.02, 0.02, 11.4, 10]} />
+          <meshStandardMaterial color={i === 0 ? '#991b1b' : '#0c1422'} metalness={0.45} roughness={0.5} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// ── Main Solar3DScene Component ──────────────────────────────────────────────
+export default function Solar3DScene({
+  hourOfDay, panelDataList, selectedPanel, onSelectPanel,
+  currentKW, tourStep, onNextTourStep, onPrevTourStep, onEndTour,
+  activeFormulaHighlight, onFormulaHover,
+  panelTiltDeg = 30, cloudShadowFactor = 0, faultedPanels = {},
+  onSetPanelFault, trackingMode = 'fixed',
+  fixedKW = 0, trackedKW = 0, gainPct = 0,
+  meteoData = null, onOpenControlRoom = () => {},
+}) {
+  const lighting = useMemo(
+    () => getLightingConditions(hourOfDay, cloudShadowFactor, meteoData),
+    [hourOfDay, cloudShadowFactor, meteoData]
+  );
+
+  const { isNight, isSunrise, isSunset, lightIntensity, ambientIntensity,
+    hemiIntensity, sunPosition, skyInclination, skyAzimuth } = lighting;
+
+  const targetRoll = useMemo(() => {
+    if (trackingMode !== 'tracking') return 0;
+    if (isNight) return 0;
+    const progress = (hourOfDay - 6) / 12;
+    return THREE.MathUtils.clamp((progress - 0.5) * (Math.PI * 0.55), -0.75, 0.75);
+  }, [trackingMode, hourOfDay, isNight]);
+
+  // 8 col × 4 row grid
+  const gridPositions = useMemo(() => {
+    const arr = []; let id = 1;
+    for (let r = 0; r < 4; r++) {
+      for (let c = 0; c < 8; c++) {
+        arr.push({
+          id,
+          pos: [(c - 3.5) * 2.45, ARRAY_ELEVATION_Y, (r - 1.5) * 2.3],
+        });
+        id++;
+      }
+    }
+    return arr;
+  }, []);
+
+  const tourCallouts = useMemo(() => [
+    { title: 'Monocrystalline PV Array', text: '48 kW · 32 half-cut monocrystalline modules with anti-reflective optical glass, 9-busbar cells, and P1000 MLPE optimizers on every panel.', anchorPos: [-4.5, ARRAY_ELEVATION_Y + 1.0, 0] },
+    { title: 'Single-Axis Tracking', text: 'Motorized slew drives rotate torque tubes with sun azimuth, boosting daily generation yield by +18% to +26%.', anchorPos: [0, ARRAY_ELEVATION_Y + 0.8, 0] },
+    { title: 'Galvanized Racking', text: 'C-section galvanized torque tubes elevated at 0.88 m on reinforced concrete pier foundations, rated for 140 km/h wind loads.', anchorPos: [4.5, ARRAY_ELEVATION_Y + 0.5, 0] },
+    { title: 'Central Inverter Substation', text: 'Utility-grade 1500 V DC central inverter with dual forced-air turbine cooling and medium-voltage oil-cooled step-up transformer.', anchorPos: [11.5, 2.2, 0] },
+    { title: 'Weather Telemetry Mast', text: 'Calibrated pyranometers, three-cup anemometer, and radiation-shielded thermometer delivering real-time data to Open-Meteo models.', anchorPos: [-9.8, 2.6, -3.8] },
+    { title: 'SCADA Operations Center', text: 'On-site command facility with curved NOC video wall, Edge AI XGBoost inference servers, Modbus RTU gateways, and 40 kVA online UPS.', anchorPos: [-13.5, 2.8, 1.8] },
+  ], []);
+
+  return (
+    <div className="relative w-full h-[580px] rounded-2xl overflow-hidden glass-card shadow-2xl">
       <Canvas
-        shadows
-        camera={{ position: [-7.5, 9.0, 15.0], fov: 40 }}
-        gl={{ antialias: true, alpha: false }}
-        style={{ background: bgColor }}
+        shadows="soft"
+        camera={{ position: [-10.0, 8.0, 14.0], fov: 40 }}
+        gl={{
+          antialias: true,
+          toneMapping: THREE.ACESFilmicToneMapping,
+          toneMappingExposure: isNight ? 0.75 : 1.25,
+          powerPreference: 'high-performance',
+        }}
+        dpr={[1, 2]}
       >
-        <color attach="background" args={[bgColor]} />
-        <fog attach="fog" args={[bgColor, 24, 55]} />
+        <color attach="background" args={[lighting.skyColor]} />
+        <fog attach="fog" args={[lighting.skyColor, 28, 70]} />
 
-        {/* HDRI — drives physical glass reflections */}
-        <Environment preset={isNight ? 'night' : isGoldenHour ? 'sunset' : 'city'} background={false} />
+        {/* Night sky */}
+        {isNight && <Stars radius={65} depth={55} count={3500} factor={4.5} saturation={0} fade speed={0.8} />}
 
-        {isNight && <Stars radius={120} depth={60} count={2000} factor={5} saturation={0} fade speed={0.8} />}
+        {/* Procedural sky */}
+        <SceneSky
+          isNight={isNight}
+          isSunrise={isSunrise}
+          isSunset={isSunset}
+          inclination={skyInclination}
+          azimuth={skyAzimuth}
+        />
 
-        {/* Primary sun light */}
+        {/* Ambient + Hemisphere */}
+        <ambientLight color={lighting.ambientColor} intensity={ambientIntensity} />
+        <hemisphereLight
+          color={lighting.ambientColor}
+          groundColor={isNight ? '#060c06' : '#0e1e10'}
+          intensity={hemiIntensity}
+        />
+
+        {/* Primary Sun Directional Light */}
         <directionalLight
           position={sunPosition}
           intensity={lightIntensity}
-          color={isNight ? '#8094b8' : sunColor}
+          color={lighting.sunColor}
           castShadow
-          shadow-mapSize-width={2048}
-          shadow-mapSize-height={2048}
+          shadow-mapSize-width={4096}
+          shadow-mapSize-height={4096}
           shadow-camera-near={1}
-          shadow-camera-far={55}
-          shadow-camera-left={-18}
-          shadow-camera-right={18}
-          shadow-camera-top={18}
-          shadow-camera-bottom={-18}
-          shadow-bias={-0.0003}
+          shadow-camera-far={70}
+          shadow-camera-left={-25}
+          shadow-camera-right={25}
+          shadow-camera-top={25}
+          shadow-camera-bottom={-25}
+          shadow-bias={-0.00025}
+          shadow-normalBias={0.04}
         />
 
-        <ambientLight intensity={isNight ? 0.12 : 0.4} color="#94a3b8" />
-        <hemisphereLight skyColor={isNight ? '#1a2744' : '#87ceeb'} groundColor="#0f172a" intensity={0.45} />
-        <pointLight position={[-8, 6, 9]} intensity={isNight ? 0 : 0.3} color="#bfdbfe" />
+        {/* Subtle fill light for realistic bounce */}
+        <pointLight
+          position={[0, 6, 12]}
+          intensity={lightIntensity * 0.25}
+          color={lighting.ambientColor}
+          distance={45}
+          decay={2}
+        />
 
-        {/* Sun disc */}
+        {/* Sun disk in sky */}
         {!isNight && (
-          <mesh position={sunPosition}>
-            <sphereGeometry args={[1.4, 32, 32]} />
-            <meshBasicMaterial color={isGoldenHour ? '#fb923c' : '#fbbf24'} />
-          </mesh>
+          <group position={sunPosition}>
+            <mesh>
+              <sphereGeometry args={[2.0, 24, 24]} />
+              <meshBasicMaterial color={isSunrise || isSunset ? '#ffa236' : '#fffbe0'} />
+            </mesh>
+            <mesh>
+              <sphereGeometry args={[3.5, 18, 18]} />
+              <meshBasicMaterial
+                color={isSunrise || isSunset ? '#ff8c00' : '#ffe080'}
+                transparent opacity={0.2}
+                side={THREE.BackSide}
+                blending={THREE.AdditiveBlending}
+                depthWrite={false}
+              />
+            </mesh>
+          </group>
         )}
 
-        {/* Panel array */}
-        <group>
-          {gridPositions.map((item, idx) => {
-            const data  = panelDataList[idx] || { id: item.id, predictedKW: 0, label: `Panel A-${idx + 1}`, status: 'Standby' };
-            const isSel = !!(selectedPanel && selectedPanel.id === data.id);
-            return (
-              <SolarPanel3D
-                key={item.id}
-                panelData={data}
-                position={item.pos}
-                isSelected={isSel}
-                onSelectPanel={onSelectPanel}
-                totalArrayKW={currentKW}
-                isPulseHighlighted={activeFormulaHighlight === 'kw'}
-                panelTiltDeg={panelTiltDeg}
-                onSetFault={onSetPanelFault}
-              />
-            );
-          })}
-        </group>
+        {/* ── Terrain & Ground ── */}
+        <Terrain isNight={isNight} />
 
-        <MountingRails />
-        <InverterUnit currentKW={currentKW} />
+        {/* ── DC Cable Bus ── */}
+        <DCBusCables />
+
+        {/* ── Solar Panel Array 32× ── */}
+        {gridPositions.map((item, idx) => {
+          const data = panelDataList[idx % panelDataList.length] || { id: item.id, predictedKW: 0, label: `Panel A-${idx + 1}`, status: 'Standby' };
+          const isSel = !!(selectedPanel && selectedPanel.id === data.id);
+          return (
+            <SolarPanel3D
+              key={item.id}
+              panelData={data}
+              position={item.pos}
+              isSelected={isSel}
+              onSelectPanel={onSelectPanel}
+              totalArrayKW={currentKW}
+              isPulseHighlighted={activeFormulaHighlight === 'kw'}
+              panelTiltDeg={panelTiltDeg}
+              onSetFault={onSetPanelFault}
+              targetRoll={targetRoll}
+              trackingMode={trackingMode}
+              sunlightFactor={lighting.solarFactor * (1 - lighting.effectiveCloud * 0.5)}
+            />
+          );
+        })}
+
+        {/* ── Racking System ── */}
+        <MountingRacking rowZPositions={[-3.45, -1.15, 1.15, 3.45]} rowLength={19.5} />
+
+        {/* ── Weather Mast ── */}
+        <WeatherStationMast isNight={isNight} />
+
+        {/* ── Central Inverter ── */}
+        <InverterSubstation currentKW={currentKW} />
+
+        {/* ── Control Center ── */}
+        <ControlRoomBuilding onOpenControlRoom={onOpenControlRoom} isNight={isNight} />
+
+        {/* ── Energy Particles ── */}
         <EnergyParticles currentKW={currentKW} />
 
-        {/* DC cables */}
-        <group position={[3.8, 0.07, 0.18]}>
-          {[0.07, -0.07].map((z, i) => (
-            <mesh key={i} position={[0, 0, z]} rotation={[0, 0, Math.PI / 2]}>
-              <cylinderGeometry args={[0.022, 0.022, 7.5, 12]} />
-              <meshStandardMaterial color={i === 0 ? '#dc2626' : '#1f2937'} metalness={0.5} roughness={0.45} />
-            </mesh>
-          ))}
-        </group>
-
-        {/* AC cable */}
-        <mesh position={[9.2, 0.07, 0.7]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.022, 0.022, 3.2, 12]} />
-          <meshStandardMaterial color="#ea580c" metalness={0.5} roughness={0.4} />
-        </mesh>
-
-        {/* Ground */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
-          <planeGeometry args={[65, 65]} />
-          <meshStandardMaterial color="#111827" roughness={0.92} metalness={0.06} />
-        </mesh>
-
-        {/* Technical grid */}
-        <Grid
-          position={[0, 0.002, 0]}
-          args={[65, 65]}
-          cellSize={1}
-          cellThickness={0.35}
-          cellColor="#1e2938"
-          sectionSize={5}
-          sectionThickness={0.7}
-          sectionColor="#1e3a5f"
-          fadeDistance={35}
-          fadeStrength={1.2}
-          infiniteGrid
-        />
-
+        {/* ── Contact Shadows ── */}
         <ContactShadows
-          position={[0, 0.005, 0]}
-          opacity={0.7}
-          scale={28}
-          blur={2.2}
-          far={6}
+          position={[0, 0.004, 0]}
+          opacity={isNight ? 0.5 : 0.85}
+          scale={36}
+          blur={2.5}
+          far={10}
+          color="#000000"
         />
 
-        {/* Tour callouts */}
+        <CameraTourController tourStep={tourStep} />
+
+        {/* ── Tour Callouts ── */}
         {tourStep !== null && tourCallouts[tourStep] && (
-          <Html position={tourCallouts[tourStep].anchorPos} center distanceFactor={10} zIndexRange={[100, 0]}>
-            <div className="bg-[#141619] border border-[#2a2d32] p-4 rounded-sm w-72 text-[#c7ccd4] font-sans pointer-events-auto select-none">
-              <div className="flex items-center justify-between border-b border-[#2a2d32] pb-2 mb-2">
-                <span className="text-[11px] font-bold text-[#f0a830] font-mono uppercase tracking-wider">{tourCallouts[tourStep].title}</span>
-                <span className="text-[10px] text-[#9ca3af] font-mono">{tourStep + 1}/5</span>
+          <Html position={tourCallouts[tourStep].anchorPos} center distanceFactor={11} zIndexRange={[100, 0]}>
+            <div className="glass-panel p-4 rounded-xl w-80 text-white select-none border border-amber-500/30 shadow-2xl">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-2">
+                <span className="text-2xs font-bold text-amber-400 font-display uppercase tracking-wider">
+                  {tourCallouts[tourStep].title}
+                </span>
+                <span className="text-2xs text-slate-400">{tourStep + 1}/6</span>
               </div>
-              <p className="text-xs text-[#c7ccd4] leading-relaxed mb-3">{tourCallouts[tourStep].text}</p>
-              <div className="flex items-center justify-between pt-1 border-t border-[#2a2d32]">
+              <p className="text-xs text-slate-300 leading-relaxed mb-3">{tourCallouts[tourStep].text}</p>
+              <div className="flex items-center justify-between pt-2 border-t border-slate-800">
                 <button onClick={e => { e.stopPropagation(); onPrevTourStep(); }} disabled={tourStep === 0}
-                  className="px-2.5 py-1 text-xs bg-[#1f2328] hover:bg-[#2a2d32] disabled:opacity-40 rounded-sm text-[#c7ccd4] flex items-center gap-1 font-mono">
+                  className="px-2.5 py-1 text-2xs bg-slate-800/80 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-slate-300 flex items-center gap-1 font-semibold">
                   <ArrowLeft size={12} /><span>PREV</span>
                 </button>
-                <button onClick={e => { e.stopPropagation(); onEndTour(); }} className="text-xs text-[#9ca3af] hover:text-white font-mono">CLOSE</button>
-                {tourStep < 4
-                  ? <button onClick={e => { e.stopPropagation(); onNextTourStep(); }} className="px-3 py-1 text-xs bg-[#f0a830] hover:bg-[#d99426] text-[#0b0c0e] font-bold rounded-sm flex items-center gap-1 font-mono">
-                      <span>NEXT</span><ArrowRight size={12} />
-                    </button>
-                  : <button onClick={e => { e.stopPropagation(); onEndTour(); }} className="px-3 py-1 text-xs bg-[#10b981] hover:bg-[#059669] text-[#0b0c0e] font-bold rounded-sm flex items-center gap-1 font-mono">
-                      <span>DONE</span><Check size={12} />
-                    </button>
-                }
+                <button onClick={e => { e.stopPropagation(); onEndTour(); }} className="text-2xs text-slate-400 hover:text-white font-semibold">CLOSE</button>
+                {tourStep < 5 ? (
+                  <button onClick={e => { e.stopPropagation(); onNextTourStep(); }}
+                    className="px-3 py-1 text-2xs bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg flex items-center gap-1">
+                    <span>NEXT</span><ArrowRight size={12} />
+                  </button>
+                ) : (
+                  <button onClick={e => { e.stopPropagation(); onEndTour(); }}
+                    className="px-3 py-1 text-2xs bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-lg flex items-center gap-1">
+                    <span>DONE</span><Check size={12} />
+                  </button>
+                )}
               </div>
             </div>
           </Html>
         )}
-
-        <CameraTourController tourStep={tourStep} />
       </Canvas>
+
+      {/* HUD overlays */}
+      <div className="absolute top-4 left-4 z-10 flex flex-wrap gap-2 pointer-events-none">
+        <div className="glass-panel px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-200 border border-slate-700/60 shadow-lg flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span>48 kW Utility Solar Farm · 4-Row Single-Axis Tracking</span>
+        </div>
+        {trackingMode === 'tracking' && (
+          <div className="glass-panel px-3 py-1.5 rounded-xl text-xs font-semibold text-amber-400 border border-amber-500/30 shadow-lg flex items-center gap-1.5">
+            <span>Tracking Active · +{gainPct.toFixed(1)}% Yield Gain</span>
+          </div>
+        )}
+      </div>
+
+      <div className="absolute bottom-4 left-4 z-10 flex items-center gap-2">
+        <button onClick={onOpenControlRoom}
+          className="text-2xs text-sky-300 hover:text-white glass-panel px-3 py-1.5 rounded-lg border border-sky-500/30 hover:border-sky-400 flex items-center gap-1.5 shadow-lg transition-all pointer-events-auto">
+          <Building2 size={13} className="text-emerald-400" />
+          <span>Enter SCADA Control Room</span>
+        </button>
+        <div className="text-2xs text-slate-400 glass-panel px-3 py-1.5 rounded-lg pointer-events-none hidden sm:block">
+          Click panels for telemetry · Orbit to explore
+        </div>
+      </div>
     </div>
   );
 }

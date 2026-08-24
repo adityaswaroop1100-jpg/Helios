@@ -46,7 +46,7 @@ export default function OnboardingModal({ isOpen, onClose, onStartTour }) {
             {current.icon}
           </div>
           <div>
-            <div className="text-[10px] uppercase font-bold tracking-wider text-sky-400 font-mono">
+            <div className="text-[10px] uppercase font-bold tracking-wider text-sky-400 font-display tabular-nums">
               Welcome Guide • Step {step + 1} of {steps.length}
             </div>
             <h3 className="text-base font-bold text-white">{current.title}</h3>
