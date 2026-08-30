@@ -36,7 +36,7 @@ export default function KpiCard({
       whileHover={{ y: -6 }}
       transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
       className={cn(
-        'glass-panel relative flex flex-col justify-between p-24 overflow-hidden border-l-2 group cursor-default transition-all duration-300',
+        'glass-panel relative flex flex-col justify-between p-24 overflow-hidden border-l-2 group cursor-default transition-all duration-300 min-h-[140px] h-full',
         className
       )}
       style={{

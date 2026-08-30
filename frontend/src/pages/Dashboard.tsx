@@ -10,22 +10,52 @@ import StringHealthMatrix from '../components/dashboard/StringHealthMatrix';
 import { getFinancialMetrics } from '../api/forecastApi';
 import { DEFAULT_LOCATION } from '../api/energyEngine';
 
-export default function Dashboard({
+export interface HourlyDataPoint {
+  hour: number;
+  timeLabel: string;
+  irradiance: number;
+  predictedKW: number;
+  p90UpperKW?: number;
+  p10LowerKW?: number;
+  ambientTemp?: number;
+  panelTemp?: number;
+  isAnomaly?: boolean;
+  anomalyDescription?: string;
+  directW?: number;
+  diffuseW?: number;
+}
+
+export interface DashboardProps {
+  hourlyData?: HourlyDataPoint[];
+  currentHour?: number;
+  onSelectHour?: (hour: number) => void;
+  faultedPanels?: Record<number, string>;
+  onSelectPanel?: (panelId: number) => void;
+  location?: {
+    name: string;
+    country: string;
+    latitude: number;
+    longitude: number;
+    timezone: string;
+  };
+}
+
+export const Dashboard: React.FC<DashboardProps> = ({
   hourlyData = [],
   currentHour = 12,
   onSelectHour,
   faultedPanels = {},
   onSelectPanel,
   location = DEFAULT_LOCATION,
-}) {
+}) => {
   const currentHourData = hourlyData[currentHour] || {};
   const metrics = getFinancialMetrics(hourlyData, currentHour);
 
   // Sparkline telemetry arrays
-  const powerSparkline = hourlyData.slice(8, 18).map(d => ({ v: d.predictedKW }));
-  const yieldSparkline = hourlyData.slice(0, 12).map(d => ({ v: d.predictedKW }));
-  const savingsSparkline = hourlyData.slice(8, 18).map(d => ({ v: (d.predictedKW * 0.18).toFixed(2) }));
-  const co2Sparkline = hourlyData.slice(8, 18).map(d => ({ v: (d.predictedKW * 0.707).toFixed(2) }));
+  const powerSparkline = hourlyData.slice(8, 18).map((d) => ({ v: d.predictedKW }));
+  const yieldSparkline = hourlyData.slice(0, 12).map((d) => ({ v: d.predictedKW }));
+  const savingsSparkline = hourlyData.slice(8, 18).map((d) => ({ v: +(d.predictedKW * 0.18).toFixed(2) }));
+  const co2Sparkline = hourlyData.slice(8, 18).map((d) => ({ v: +(d.predictedKW * 0.707).toFixed(2) }));
 
   return (
     <div className="p-6 h-full overflow-y-auto">
@@ -145,4 +175,6 @@ export default function Dashboard({
       </motion.div>
     </div>
   );
-}
+};
+
+export default Dashboard;

@@ -94,7 +94,7 @@ export default function GlassChart({
       </div>
 
       {/* Recharts Area Container */}
-      <div style={{ width: '100%', height }} className="cursor-pointer">
+      <div className="flex-1 min-h-0 w-full cursor-pointer">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
             data={data}
