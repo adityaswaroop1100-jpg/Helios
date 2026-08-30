@@ -4,9 +4,10 @@ import { Zap, TrendingUp, DollarSign, Leaf } from 'lucide-react';
 import KpiCard from '../components/ui/KpiCard';
 import GlassChart from '../components/ui/GlassChart';
 import CircularGaugeCluster from '../components/ui/CircularGaugeCluster';
-import ScadaDecisionHud from '../components/dashboard/ScadaDecisionHud';
+import XgboostScadaCard from '../components/dashboard/XgboostScadaCard';
 import AnomalyAlertFeed from '../components/dashboard/AnomalyAlertFeed';
 import StringHealthMatrix from '../components/dashboard/StringHealthMatrix';
+import StatusBadge from '../components/ui/StatusBadge';
 import { getFinancialMetrics } from '../api/forecastApi';
 import { DEFAULT_LOCATION } from '../api/energyEngine';
 
@@ -21,87 +22,96 @@ export default function Dashboard({
   const currentHourData = hourlyData[currentHour] || {};
   const metrics = getFinancialMetrics(hourlyData, currentHour);
 
-  // Sparkline telemetry arrays
-  const powerSparkline = hourlyData.slice(8, 18).map(d => ({ v: d.predictedKW }));
-  const yieldSparkline = hourlyData.slice(0, 12).map(d => ({ v: d.predictedKW }));
-  const savingsSparkline = hourlyData.slice(8, 18).map(d => ({ v: (d.predictedKW * 0.18).toFixed(2) }));
-  const co2Sparkline = hourlyData.slice(8, 18).map(d => ({ v: (d.predictedKW * 0.707).toFixed(2) }));
+  // Sparkline telemetry trends
+  const powerSparkline = hourlyData.slice(8, 18).map((d) => ({ v: d.predictedKW }));
+  const yieldSparkline = hourlyData.slice(0, 12).map((d) => ({ v: d.predictedKW }));
+  const savingsSparkline = hourlyData.slice(8, 18).map((d) => ({ v: +(d.predictedKW * 0.18).toFixed(2) }));
+  const co2Sparkline = hourlyData.slice(8, 18).map((d) => ({ v: +(d.predictedKW * 0.707).toFixed(2) }));
 
   return (
-    <div className="p-6 h-full overflow-y-auto">
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-        className="grid grid-cols-12 gap-6 grid-rows-[auto_420px_1fr] h-full"
-      >
-        {/* ── ROW 1: KPIs (Auto height, enforced by min-h-[140px] on cards) ── */}
-        <div className="col-span-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="h-full overflow-y-auto p-6">
+      <div className="grid grid-cols-12 gap-6 auto-rows-min">
+
+        {/* ── ROW 1: Header Row (col-span-12) ── */}
+        <div className="col-span-12 flex items-center justify-between pb-2 border-b border-border-subtle flex-wrap gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-white">Dashboard</h1>
+            <p className="text-sm text-text-secondary">
+              {location.name} Utility Farm • {location.latitude}° N, {location.longitude}° E
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <StatusBadge status="online" label="LIVE SCADA" />
+            <span className="font-mono text-xs text-text-muted">IEC 61724 • IEEE 1547</span>
+          </div>
+        </div>
+
+        {/* ── ROW 2: 4 Hero KPI Cards (col-span-3 each) ── */}
+        <div className="col-span-12 sm:col-span-6 lg:col-span-3">
           <KpiCard
-            label="Active Generation"
-            sub="Real-Time 32-Module Yield"
-            value={metrics.currentKW}
+            label="Array Capacity"
+            sub="32 Monocrystalline Modules"
+            value="48.0"
             unit="kW"
             icon={Zap}
-            sparklineData={powerSparkline}
-            trend="+14.2% vs STC"
-            trendDirection="up"
-            badgeText="LIVE SCADA"
+            badgeText="NAMEPLATE"
             accentColor="#f59e0b"
-            tooltipText="Real-time aggregated power from all 32 monocrystalline PV modules with dynamic NOCT temperature derating."
-            className="min-h-[140px]"
-          />
-
-          <KpiCard
-            label="24h Yield Forecast"
-            sub="XGBoost Predictive Total"
-            value={metrics.totalDailyKWh}
-            unit="kWh"
-            icon={TrendingUp}
-            sparklineData={yieldSparkline}
-            trend="99.9% R² Conf."
+            trend="+100% Online"
             trendDirection="up"
-            badgeText="P90 BOUND"
-            accentColor="#38bdf8"
-            tooltipText="Integrated 24-hour total energy generation predicted by the trained XGBoost ML regression model."
-            className="min-h-[140px]"
-          />
-
-          <KpiCard
-            label="Grid Cost Offset"
-            sub="$0.18/kWh Commercial Rate"
-            value={metrics.dailySavingsUSD}
-            unit="/day"
-            prefix="$"
-            icon={DollarSign}
-            sparklineData={savingsSparkline}
-            trend="+$46.70 / day"
-            trendDirection="up"
-            badgeText="ARBITRAGE"
-            accentColor="#10b981"
-            tooltipText="Direct financial cost avoidance by replacing grid peak power tariffs with self-generated solar energy."
-            className="min-h-[140px]"
-          />
-
-          <KpiCard
-            label="Scope-2 Carbon Avoided"
-            sub="0.707 kg/kWh Grid Intensity"
-            value={metrics.co2AvoidedKg}
-            unit="kg CO₂"
-            icon={Leaf}
-            sparklineData={co2Sparkline}
-            trend="Net Zero Asset"
-            trendDirection="up"
-            badgeText="ESG IMPACT"
-            accentColor="#22c55e"
-            tooltipText="Greenhouse gas emissions avoided relative to the regional fossil-fuel grid electricity benchmark."
-            className="min-h-[140px]"
+            tooltipText="Rated utility peak DC generation capacity for the 32 monocrystalline PV module array."
           />
         </div>
 
-        {/* ── ROW 2: Chart + Gauges (Fixed 420px height) ── */}
-        <div className="col-span-12 lg:col-span-8 h-[420px]">
+        <div className="col-span-12 sm:col-span-6 lg:col-span-3">
+          <KpiCard
+            label="Current Power"
+            sub="Real-Time String Yield"
+            value={metrics.currentKW}
+            unit="kW"
+            icon={Zap}
+            badgeText="LIVE YIELD"
+            accentColor="#fbbf24"
+            trend="+14.2% vs STC"
+            trendDirection="up"
+            sparklineData={powerSparkline}
+            tooltipText="Aggregated real-time active power output with NOCT dynamic cell temperature derating."
+          />
+        </div>
+
+        <div className="col-span-12 sm:col-span-6 lg:col-span-3">
+          <KpiCard
+            label="Daily Energy"
+            sub="XGBoost Predicted Total"
+            value={metrics.totalDailyKWh}
+            unit="kWh"
+            icon={TrendingUp}
+            badgeText="99.9% R²"
+            accentColor="#38bdf8"
+            trend="P90 High Conf."
+            trendDirection="up"
+            sparklineData={yieldSparkline}
+            tooltipText="Integrated 24-hour total energy generation predicted by the trained XGBoost ML regression model."
+          />
+        </div>
+
+        <div className="col-span-12 sm:col-span-6 lg:col-span-3">
+          <KpiCard
+            label="CO₂ Avoided"
+            sub="0.707 kg/kWh Benchmark"
+            value={metrics.co2AvoidedKg}
+            unit="kg"
+            icon={Leaf}
+            badgeText="SCOPE 2"
+            accentColor="#10b981"
+            trend="Net Zero Asset"
+            trendDirection="up"
+            sparklineData={co2Sparkline}
+            tooltipText="Scope-2 greenhouse gas emissions avoided relative to regional fossil-fuel electricity benchmarks."
+          />
+        </div>
+
+        {/* ── ROW 3: Chart + Gauges (Fixed Height 420px) ── */}
+        <div className="col-span-12 lg:col-span-8 row-span-1 h-[420px]">
           <GlassChart
             data={hourlyData}
             currentHour={currentHour}
@@ -111,7 +121,7 @@ export default function Dashboard({
           />
         </div>
 
-        <div className="col-span-12 lg:col-span-4 h-[420px]">
+        <div className="col-span-12 lg:col-span-4 row-span-1 h-[420px]">
           <CircularGaugeCluster
             irradiance={currentHourData.irradiance || 850}
             cellTemp={currentHourData.panelTemp || 42.5}
@@ -120,29 +130,29 @@ export default function Dashboard({
           />
         </div>
 
-        {/* ── ROW 3: Bottom Section (1fr takes the rest, cards use flex-col h-full) ── */}
-        <div className="col-span-12 space-y-6">
-          <ScadaDecisionHud
+        {/* ── ROW 4: Feature Importance + SCADA Engine (Left) | Anomaly Audit (Right) ── */}
+        <div className="col-span-12 lg:col-span-6">
+          <XgboostScadaCard
             currentHourData={currentHourData}
             faultedPanels={faultedPanels}
+            className="h-full"
+          />
+        </div>
+
+        <div className="col-span-12 lg:col-span-6">
+          <AnomalyAlertFeed className="h-full" />
+        </div>
+
+        {/* ── ROW 5: String Health Heatmap (Full Width) ── */}
+        <div className="col-span-12">
+          <StringHealthMatrix
+            faultedPanels={faultedPanels}
+            onSelectPanel={onSelectPanel}
             className="w-full"
           />
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-            <div className="col-span-12 lg:col-span-8">
-              <AnomalyAlertFeed className="h-full flex flex-col justify-between" />
-            </div>
-
-            <div className="col-span-12 lg:col-span-4">
-              <StringHealthMatrix
-                faultedPanels={faultedPanels}
-                onSelectPanel={onSelectPanel}
-                className="h-full flex flex-col justify-between"
-              />
-            </div>
-          </div>
         </div>
-      </motion.div>
+
+      </div>
     </div>
   );
 }
