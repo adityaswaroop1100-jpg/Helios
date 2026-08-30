@@ -6,6 +6,7 @@ import {
   getOutputFromHourlyData
 } from './api/forecastApi';
 
+import Dashboard from './pages/Dashboard';
 import ForecastChart from './components/dashboard/ForecastChart';
 import RecommendationBanner from './components/dashboard/RecommendationBanner';
 import AnomalyPanel from './components/dashboard/AnomalyPanel';
@@ -497,38 +498,17 @@ export default function App() {
       </header>
 
       {/* ── Main content ─────────────────────────────────────────────────── */}
-      <main className="max-w-7xl mx-auto px-5 lg:px-8 py-6 space-y-5 flex-1 w-full">
-        <CostEstimate hourlyData={hourlyData} currentHour={currentActiveHour} />
-        <RecommendationBanner currentHourData={currentHourData} faultedPanels={faultedPanels} />
-
+      <main className="max-w-7xl mx-auto px-5 lg:px-8 py-6 space-y-6 flex-1 w-full">
         {/* ── DASHBOARD TAB ── */}
         {activeTab === 'dashboard' && (
-          <div className="space-y-5 animate-fadeIn">
-            <EnergyComputePanel
-              currentHourData={currentHourData}
-              meteoData={meteoData}
-              faultedPanels={faultedPanels}
-              tiltDeg={panelTiltDeg}
-              trackingRoll={0}
-              location={location}
-              onOpenLocationModal={() => setShowLocationModal(true)}
-              onRefresh={loadMeteo}
-            />
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-              <div className="lg:col-span-2">
-                <ForecastChart
-                  hourlyData={hourlyData}
-                  currentHour={currentActiveHour}
-                  onSelectHour={h => { setIsLiveClock(false); setHourOfDay(h); }}
-                  location={location}
-                />
-              </div>
-              <div className="space-y-5">
-                <AnomalyPanel currentHourData={currentHourData} />
-                <FeatureImportance />
-              </div>
-            </div>
-          </div>
+          <Dashboard
+            hourlyData={hourlyData}
+            currentHour={currentActiveHour}
+            onSelectHour={h => { setIsLiveClock(false); setHourOfDay(h); }}
+            faultedPanels={faultedPanels}
+            onSelectPanel={id => setSelectedPanelId(id)}
+            location={location}
+          />
         )}
 
         {/* ── 3D TWIN TAB ── */}
