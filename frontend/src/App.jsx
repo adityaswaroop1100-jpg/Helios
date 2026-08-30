@@ -34,7 +34,7 @@ function getCityLocalTime(location) {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('3d');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [location, setLocation] = useState(() => {
     try {
       const saved = localStorage.getItem('helios_location');

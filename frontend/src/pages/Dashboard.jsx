@@ -29,18 +29,18 @@ export default function Dashboard({
   const co2Sparkline = hourlyData.slice(8, 18).map((d) => ({ v: +(d.predictedKW * 0.707).toFixed(2) }));
 
   return (
-    <div className="h-full overflow-y-auto p-6">
+    <div className="w-full space-y-6">
       <div className="grid grid-cols-12 gap-6 auto-rows-min">
 
         {/* ── ROW 1: Header Row (col-span-12) ── */}
-        <div className="col-span-12 flex items-center justify-between pb-2 border-b border-border-subtle flex-wrap gap-4">
+        <div className="col-span-12 flex items-center justify-between pb-3 border-b border-border-subtle flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-white">Dashboard</h1>
             <p className="text-sm text-text-secondary">
               {location.name} Utility Farm • {location.latitude}° N, {location.longitude}° E
             </p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <StatusBadge status="online" label="LIVE SCADA" />
             <span className="font-mono text-xs text-text-muted">IEC 61724 • IEEE 1547</span>
           </div>
@@ -117,7 +117,7 @@ export default function Dashboard({
             currentHour={currentHour}
             onSelectHour={onSelectHour}
             locationName={location.name}
-            className="h-full flex flex-col justify-between"
+            className="h-full"
           />
         </div>
 
@@ -126,7 +126,7 @@ export default function Dashboard({
             irradiance={currentHourData.irradiance || 850}
             cellTemp={currentHourData.panelTemp || 42.5}
             bessSoc={84}
-            className="h-full flex flex-col justify-between"
+            className="h-full"
           />
         </div>
 

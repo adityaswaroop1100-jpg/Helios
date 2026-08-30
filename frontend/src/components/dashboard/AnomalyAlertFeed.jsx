@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, CheckCircle2, Flame, ShieldAlert, Clock, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ShieldAlert, Clock } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export default function AnomalyAlertFeed({
@@ -36,23 +36,23 @@ export default function AnomalyAlertFeed({
       ];
 
   return (
-    <div className={cn('glass-panel p-24 flex flex-col justify-between', className)}>
-      <div className="flex items-center justify-between pb-12 mb-16 border-b border-border-subtle">
-        <div className="flex items-center gap-8">
-          <div className="w-32 h-32 rounded-lg bg-surface border border-border-glow flex items-center justify-center text-rose shadow-sm">
+    <div className={cn('glass-panel p-5 flex flex-col justify-between h-full shadow-lg', className)}>
+      <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-border-subtle">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-surface border border-border-glow flex items-center justify-center text-rose shadow-sm">
             <ShieldAlert size={16} />
           </div>
           <div>
-            <h2 className="text-h2 font-semibold text-text-primary tracking-tight">Live SCADA Anomaly Audit Feed</h2>
-            <p className="text-mono text-xs text-text-muted mt-2">Millisecond Incident Resolution Log</p>
+            <h2 className="text-sm font-semibold text-text-primary tracking-tight">Live SCADA Anomaly Audit Feed</h2>
+            <p className="text-mono text-3xs text-text-muted mt-0.5">Millisecond Incident Resolution Log</p>
           </div>
         </div>
-        <span className="text-mono text-2xs font-bold px-8 py-4 rounded-full bg-surface border border-border-subtle text-text-secondary">
+        <span className="text-mono text-3xs font-bold px-2 py-0.5 rounded-full bg-surface border border-border-subtle text-text-secondary">
           STREAMING 100 Hz
         </span>
       </div>
 
-      <div className="space-y-12 my-auto">
+      <div className="space-y-2.5 my-auto">
         {sampleEvents.map((ev) => {
           const isCritical = ev.severity === 'CRITICAL';
           const isNominal = ev.severity === 'NOMINAL';
@@ -61,7 +61,7 @@ export default function AnomalyAlertFeed({
             <div
               key={ev.id}
               className={cn(
-                'p-16 rounded-xl border flex flex-col sm:flex-row items-start justify-between gap-12 transition-all',
+                'p-3 rounded-xl border flex flex-col sm:flex-row items-start justify-between gap-2.5 transition-all shadow-sm',
                 isCritical
                   ? 'bg-rose/10 border-rose/30'
                   : isNominal
@@ -69,10 +69,10 @@ export default function AnomalyAlertFeed({
                   : 'bg-surface/60 border-border-subtle'
               )}
             >
-              <div className="flex items-start gap-12">
+              <div className="flex items-start gap-2.5">
                 <div
                   className={cn(
-                    'w-32 h-32 rounded-lg flex items-center justify-center shrink-0 mt-2',
+                    'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5',
                     isCritical
                       ? 'bg-rose/20 text-rose'
                       : isNominal
@@ -81,22 +81,22 @@ export default function AnomalyAlertFeed({
                   )}
                 >
                   {isCritical ? (
-                    <AlertTriangle size={15} />
+                    <AlertTriangle size={14} />
                   ) : isNominal ? (
-                    <CheckCircle2 size={15} />
+                    <CheckCircle2 size={14} />
                   ) : (
-                    <Clock size={15} />
+                    <Clock size={14} />
                   )}
                 </div>
 
                 <div>
-                  <div className="flex items-center gap-8 flex-wrap mb-4">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
                     <span className="font-semibold text-xs text-text-primary">{ev.title}</span>
-                    <span className="text-mono text-3xs px-6 py-2 rounded-full bg-base border border-border-subtle text-text-muted">
+                    <span className="text-mono text-3xs px-1.5 py-0.5 rounded bg-base border border-border-subtle text-text-muted">
                       {ev.source}
                     </span>
                   </div>
-                  <p className="text-xs text-text-secondary leading-relaxed max-w-xl">{ev.desc}</p>
+                  <p className="text-3xs text-text-secondary leading-relaxed max-w-xl">{ev.desc}</p>
                 </div>
               </div>
 
@@ -108,7 +108,7 @@ export default function AnomalyAlertFeed({
         })}
       </div>
 
-      <div className="mt-16 pt-12 border-t border-border-subtle flex items-center justify-between text-mono text-xs text-text-muted">
+      <div className="mt-3 pt-2.5 border-t border-border-subtle flex items-center justify-between text-mono text-3xs text-text-muted">
         <span>Cloud Database: Google Firebase Firestore</span>
         <span className="text-solar-amber font-semibold">Zero Disk Footprint</span>
       </div>

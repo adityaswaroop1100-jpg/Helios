@@ -10,17 +10,17 @@ export const CustomChartTooltip = ({ active, payload }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
-      <div className="glass-panel p-16 shadow-glass border border-border-glow text-xs space-y-8 min-w-[200px]">
-        <div className="flex items-center justify-between pb-8 border-b border-border-subtle font-display font-semibold text-text-primary">
+      <div className="glass-panel p-3.5 shadow-glass border border-border-glow text-xs space-y-2 min-w-[190px]">
+        <div className="flex items-center justify-between pb-1.5 border-b border-border-subtle font-display font-semibold text-text-primary">
           <span>{data.timeLabel}</span>
           {data.ambientTemp !== undefined && (
-            <span className="text-2xs text-sky-blue px-6 py-2 rounded-md bg-surface border border-border-subtle">
+            <span className="text-3xs text-sky-blue px-1.5 py-0.5 rounded bg-surface border border-border-subtle">
               {data.ambientTemp}°C
             </span>
           )}
         </div>
         <div className="flex justify-between items-center text-text-secondary">
-          <span className="flex items-center gap-6">
+          <span className="flex items-center gap-1.5">
             <Zap size={12} className="text-solar-amber" />
             <span>Predicted PV</span>
           </span>
@@ -39,7 +39,7 @@ export const CustomChartTooltip = ({ active, payload }) => {
           <span className="font-display text-text-primary">{data.irradiance} W/m²</span>
         </div>
         {data.isAnomaly && (
-          <div className="flex items-center gap-6 pt-6 text-rose font-medium border-t border-rose/20 text-2xs">
+          <div className="flex items-center gap-1.5 pt-1 text-rose font-medium border-t border-rose/20 text-3xs">
             <AlertTriangle size={11} />
             <span>{data.anomalyDescription || 'Fault Detected'}</span>
           </div>
@@ -57,37 +57,36 @@ export default function GlassChart({
   locationName = 'Chengalpattu',
   title = '24-Hour Solar PV Generation Curve',
   subtitle = 'XGBoost ML R² 0.9989 Predictive Ensemble',
-  height = 320,
   className,
 }) {
   return (
-    <div className={cn('glass-panel p-24 relative flex flex-col justify-between', className)}>
+    <div className={cn('glass-panel p-5 relative flex flex-col justify-between h-full shadow-lg', className)}>
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-12 mb-16 pb-12 border-b border-border-subtle">
-        <div className="flex items-center gap-12">
-          <div className="w-32 h-32 rounded-lg bg-surface border border-border-glow flex items-center justify-center text-solar-amber shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3 pb-2.5 border-b border-border-subtle">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-surface border border-border-glow flex items-center justify-center text-solar-amber shadow-sm">
             <TrendingUp size={16} />
           </div>
           <div>
-            <div className="flex items-center gap-8">
-              <h2 className="text-h2 font-semibold text-text-primary tracking-tight">{title}</h2>
-              <span className="text-mono text-2xs px-8 py-2 rounded-full border border-sky-blue/30 text-sky-blue bg-sky-blue/10 flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-text-primary tracking-tight">{title}</h2>
+              <span className="text-mono text-3xs px-2 py-0.5 rounded-full border border-sky-blue/30 text-sky-blue bg-sky-blue/10 flex items-center gap-1">
                 <MapPin size={9} />
                 <span>{locationName}</span>
               </span>
             </div>
-            <p className="text-mono text-xs text-text-muted mt-2">{subtitle}</p>
+            <p className="text-mono text-3xs text-text-muted mt-0.5">{subtitle}</p>
           </div>
         </div>
 
         {/* Legend */}
-        <div className="flex items-center gap-16 text-mono text-xs">
-          <div className="flex items-center gap-6">
-            <div className="w-8 h-8 rounded-full bg-solar-amber shadow-amber-glow" />
+        <div className="flex items-center gap-3 text-mono text-3xs">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-solar-amber shadow-amber-glow" />
             <span className="text-text-secondary">Expected kW</span>
           </div>
-          <div className="flex items-center gap-6">
-            <div className="w-8 h-8 rounded-full border border-sky-blue bg-sky-blue/20" />
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full border border-sky-blue bg-sky-blue/20" />
             <span className="text-text-muted">P90 Band</span>
           </div>
         </div>
@@ -98,7 +97,7 @@ export default function GlassChart({
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
             data={data}
-            margin={{ top: 8, right: 12, left: -12, bottom: 0 }}
+            margin={{ top: 8, right: 12, left: -14, bottom: 0 }}
             onClick={(e) => {
               if (e && e.activePayload && e.activePayload.length && onSelectHour) {
                 onSelectHour(e.activePayload[0].payload.hour);
@@ -121,7 +120,7 @@ export default function GlassChart({
             <XAxis
               dataKey="timeLabel"
               stroke="#475569"
-              fontSize={11}
+              fontSize={10}
               tickLine={false}
               axisLine={{ stroke: '#475569', strokeWidth: 1 }}
               tick={{ fill: '#94a3b8', fontFamily: 'JetBrains Mono' }}
@@ -129,7 +128,7 @@ export default function GlassChart({
 
             <YAxis
               stroke="#475569"
-              fontSize={11}
+              fontSize={10}
               tickLine={false}
               axisLine={{ stroke: '#475569', strokeWidth: 1 }}
               unit=" kW"
@@ -149,21 +148,19 @@ export default function GlassChart({
               fill="url(#skyConfidenceGrad)"
               name="Confidence Interval"
               isAnimationActive={true}
-              animationDuration={600}
-              animationEasing="ease-out"
+              animationDuration={500}
             />
 
             <Area
               type="monotone"
               dataKey="predictedKW"
               stroke="#f59e0b"
-              strokeWidth={2.5}
+              strokeWidth={2.2}
               fill="url(#solarAmberGrad)"
               name="Predicted Yield"
-              activeDot={{ r: 6, fill: '#f59e0b', stroke: '#080c1a', strokeWidth: 3 }}
+              activeDot={{ r: 5, fill: '#f59e0b', stroke: '#080c1a', strokeWidth: 2 }}
               isAnimationActive={true}
-              animationDuration={600}
-              animationEasing="ease-out"
+              animationDuration={500}
             />
 
             {currentHour !== null && currentHour !== undefined && data[currentHour] && (
@@ -172,7 +169,7 @@ export default function GlassChart({
                 stroke="#f59e0b"
                 strokeWidth={1.5}
                 strokeDasharray="4 4"
-                label={{ value: '▼ SCADA', fill: '#f59e0b', fontSize: 10, fontWeight: 700, position: 'top' }}
+                label={{ value: '▼ SCADA', fill: '#f59e0b', fontSize: 9, fontWeight: 700, position: 'top' }}
               />
             )}
           </AreaChart>
