@@ -382,43 +382,43 @@ export default function App() {
       />
 
       {/* ── Premium Floating Glass Header ─────────────────────────────────── */}
-      <header className="sticky top-0 z-50 glass-panel border-b border-white/[0.06] shadow-[0_4px_32px_rgba(0,0,0,0.5)]" style={{ position: 'relative' }}>
+      <header className="sticky top-0 z-50 glass-premium border-b border-white/[0.06] shadow-[0_4px_32px_rgba(0,0,0,0.8)]" style={{ position: 'relative' }}>
         {/* Glint accent line */}
         <div className="absolute bottom-0 left-0 right-0 h-px"
-          style={{ background: 'linear-gradient(90deg,transparent,rgba(56,189,248,0.5) 30%,rgba(56,189,248,0.7) 50%,rgba(56,189,248,0.5) 70%,transparent)' }} />
+          style={{ background: 'linear-gradient(90deg,transparent,rgba(201,151,62,0.4) 30%,rgba(201,151,62,0.8) 50%,rgba(201,151,62,0.4) 70%,transparent)' }} />
 
         <div className="max-w-7xl mx-auto px-5 lg:px-8 flex items-center justify-between" style={{ height: '66px' }}>
 
           {/* ── Left: Brand ── */}
           <div className="flex items-center gap-3.5">
             <div className="relative w-10 h-10 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg,rgba(245,158,11,0.22),rgba(16,185,129,0.18))', border: '1px solid rgba(245,158,11,0.28)' }}>
-              <Sun size={19} className="text-amber-400 animate-spin-slow" />
-              <div className="absolute inset-0 rounded-xl" style={{ boxShadow: '0 0 18px rgba(245,158,11,0.2) inset' }} />
+              style={{ background: 'linear-gradient(135deg,rgba(201,151,62,0.22),rgba(45,212,168,0.18))', border: '1px solid rgba(201,151,62,0.35)' }}>
+              <Sun size={19} className="text-gold animate-spin-slow" />
+              <div className="absolute inset-0 rounded-xl" style={{ boxShadow: '0 0 18px rgba(201,151,62,0.2) inset' }} />
             </div>
 
             <div>
               <div className="flex items-center gap-2.5">
-                <span className="font-display font-bold text-base tracking-widest text-white" style={{ letterSpacing: '0.18em' }}>HELIOS</span>
-                <span className="text-2xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5"
-                  style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.28)' }}>
+                <span className="font-display font-bold text-base tracking-widest text-text-primary" style={{ letterSpacing: '0.18em' }}>HELIOS</span>
+                <span className="text-2xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 font-mono"
+                  style={{ background: 'rgba(45,212,168,0.12)', color: '#2dd4a8', border: '1px solid rgba(45,212,168,0.28)' }}>
                   <span className="relative flex h-1.5 w-1.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-jade opacity-75" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-jade" />
                   </span>
                   LIVE SCADA
                 </span>
               </div>
 
-              <div className="text-2xs text-slate-500 font-medium hidden sm:flex items-center gap-2 mt-0.5">
-                <span className="text-slate-600">48.0 kW Utility Array</span>
-                <span className="text-slate-700">·</span>
+              <div className="text-2xs text-text-secondary font-medium hidden sm:flex items-center gap-2 mt-0.5">
+                <span className="text-text-muted">48.0 kW Utility Array</span>
+                <span className="text-text-muted">·</span>
                 <button onClick={() => setShowLocationModal(true)}
-                  className="flex items-center gap-1.5 text-sky-500 hover:text-sky-300 font-semibold transition-colors"
+                  className="flex items-center gap-1.5 text-cyan hover:text-cyan/80 font-semibold transition-colors"
                   title="Change solar node location">
                   <MapPin size={10} />
                   <span>{location.name}, {location.country}</span>
-                  <span className="text-slate-600">({location.latitude}°N)</span>
+                  <span className="text-text-muted">({location.latitude}°N)</span>
                 </button>
               </div>
             </div>
@@ -429,33 +429,30 @@ export default function App() {
 
             {/* Control Room button */}
             <button onClick={() => setShowControlRoomModal(true)}
-              className="h-9 px-3.5 flex items-center gap-1.5 rounded-xl text-xs font-semibold transition-all"
-              style={{ background: 'rgba(14,165,233,0.1)', border: '1px solid rgba(56,189,248,0.25)', color: '#38bdf8' }}
-              onMouseEnter={e => { e.currentTarget.style.background='rgba(56,189,248,0.18)'; e.currentTarget.style.color='white'; }}
-              onMouseLeave={e => { e.currentTarget.style.background='rgba(14,165,233,0.1)'; e.currentTarget.style.color='#38bdf8'; }}
+              className="h-9 px-3.5 flex items-center gap-1.5 rounded-xl text-xs font-semibold transition-all border border-cyan/30 text-cyan hover:bg-cyan/10 hover:text-white"
               title="Open 3D SCADA NOC Control Center">
-              <Building2 size={13} className="text-emerald-400" />
+              <Building2 size={13} className="text-jade" />
               <span className="hidden md:inline">Control Room</span>
             </button>
 
             {/* Divider */}
-            <div className="h-6 w-px bg-slate-800/80 hidden sm:block" />
+            <div className="h-6 w-px bg-white/10 hidden sm:block" />
 
             {/* Tracking toggle */}
-            <div className="flex items-center p-1 rounded-xl gap-0.5" style={{ background: 'rgba(5,13,24,0.8)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="flex items-center p-1 rounded-xl gap-0.5 bg-carbon border border-white/[0.06]">
               {[['fixed', 'Fixed'], ['tracking', '⚡ Tracking']].map(([key, label]) => (
                 <button key={key} onClick={() => setTrackingMode(key)}
                   className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
                   style={trackingMode === key
-                    ? { color: '#f59e0b', background: 'rgba(245,158,11,0.18)', boxShadow: '0 0 12px rgba(245,158,11,0.15)' }
-                    : { color: '#64748b' }}>
+                    ? { color: '#c9973e', background: 'rgba(201,151,62,0.18)', boxShadow: '0 0 12px rgba(201,151,62,0.15)' }
+                    : { color: '#7a8ba3' }}>
                   {label}
                 </button>
               ))}
             </div>
 
             {/* View tabs */}
-            <div className="flex items-center p-1 rounded-xl gap-0.5" style={{ background: 'rgba(5,13,24,0.8)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="flex items-center p-1 rounded-xl gap-0.5 bg-carbon border border-white/[0.06]">
               {[
                 ['dashboard', LayoutDashboard, 'Dashboard'],
                 ['3d', Box, '3D Twin'],
@@ -466,29 +463,29 @@ export default function App() {
                 <button key={key} onClick={() => setActiveTab(key)}
                   className="px-2.5 py-1.5 flex items-center gap-1.5 rounded-lg text-xs font-semibold transition-all"
                   style={activeTab === key
-                    ? { color: '#fbbf24', background: 'rgba(245,158,11,0.18)', boxShadow: '0 0 12px rgba(245,158,11,0.15)' }
-                    : { color: '#4d6278' }}>
+                    ? { color: '#c9973e', background: 'rgba(201,151,62,0.18)', boxShadow: '0 0 12px rgba(201,151,62,0.15)' }
+                    : { color: '#7a8ba3' }}>
                   <Icon size={13} /><span>{label}</span>
                 </button>
               ))}
             </div>
 
             {/* Divider */}
-            <div className="h-6 w-px bg-slate-800/80 hidden sm:block" />
+            <div className="h-6 w-px bg-white/10 hidden sm:block" />
 
             {/* Live clock toggle */}
             <button onClick={() => { setIsLiveClock(!isLiveClock); if (!isLiveClock) setIsAutoPlay(false); }}
               className="h-9 px-3.5 flex items-center gap-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
               style={isLiveClock
-                ? { background: 'rgba(245,158,11,0.18)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.38)', boxShadow: '0 0 14px rgba(245,158,11,0.18)' }
-                : { background: 'rgba(5,13,24,0.8)', color: '#4d6278', border: '1px solid rgba(255,255,255,0.07)' }}>
+                ? { background: 'rgba(201,151,62,0.18)', color: '#c9973e', border: '1px solid rgba(201,151,62,0.38)', boxShadow: '0 0 14px rgba(201,151,62,0.18)' }
+                : { background: 'rgba(6,10,20,0.8)', color: '#7a8ba3', border: '1px solid rgba(255,255,255,0.07)' }}>
               <Clock size={13} />
               <span className="hidden sm:inline">{isLiveClock ? 'Live' : 'Manual'}</span>
             </button>
 
             {/* Tour button */}
             <button onClick={handleStartTour}
-              className="h-9 px-3 flex items-center gap-1.5 rounded-xl text-xs font-bold glass-panel border border-slate-800/70 text-slate-400 hover:text-white hover:border-slate-600 transition-all"
+              className="h-9 px-3 flex items-center gap-1.5 rounded-xl text-xs font-bold glass-premium border border-white/10 text-text-secondary hover:text-white transition-all"
               title="Start guided 3D farm tour">
               <HelpCircle size={13} />
               <span className="hidden md:inline">Tour</span>
@@ -506,7 +503,7 @@ export default function App() {
             currentHour={currentActiveHour}
             onSelectHour={h => { setIsLiveClock(false); setHourOfDay(h); }}
             faultedPanels={faultedPanels}
-            onSelectPanel={id => setSelectedPanelId(id)}
+            onSelectPanel={id => setSelectedPanel(id)}
             location={location}
           />
         )}
