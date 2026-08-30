@@ -1,1 +1,82 @@
-@import './styles/globals.css';
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* -------------------- */
+/* 1. KILL THE BLUE BACKGROUND */
+/* -------------------- */
+html, body, #root {
+  background-color: #060a14 !important;
+  background-image: 
+    /* Subtle cool cyan light from top-left */
+    radial-gradient(ellipse at 15% 0%, rgba(77, 208, 225, 0.06) 0%, transparent 55%),
+    /* Warm gold light from bottom-right */
+    radial-gradient(ellipse at 85% 100%, rgba(201, 151, 62, 0.04) 0%, transparent 50%),
+    /* Micro-noise grain texture (adds physical depth) */
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E") !important;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+/* -------------------- */
+/* 2. PREMIUM GLASS PANEL (Replaces .glass-panel) */
+/* -------------------- */
+.glass-premium {
+  background: rgba(6, 10, 20, 0.75) !important;
+  backdrop-filter: blur(24px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(140%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.04) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important; /* Rim light */
+  box-shadow: 0 20px 60px -12px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.02) !important;
+  border-radius: 20px !important;
+}
+
+/* Also alias .glass-panel to .glass-premium for backward compatibility across subviews */
+.glass-panel {
+  background: rgba(6, 10, 20, 0.75) !important;
+  backdrop-filter: blur(24px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(140%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.04) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 20px 60px -12px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.02) !important;
+  border-radius: 20px !important;
+}
+
+/* -------------------- */
+/* 3. CUSTOM SCROLLBAR (Subtle & Premium) */
+/* -------------------- */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(77, 208, 225, 0.2); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(77, 208, 225, 0.4); }
+
+/* -------------------- */
+/* 4. TYPOGRAPHY ENFORCEMENT */
+/* -------------------- */
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: #eef2f6;
+  -webkit-font-smoothing: antialiased;
+}
+.mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.kpi-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: #c9973e;
+  text-shadow: 0 0 40px rgba(201, 151, 62, 0.08);
+}
+.label-uppercase {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7a8ba3;
+}

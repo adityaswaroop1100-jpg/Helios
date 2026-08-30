@@ -1,62 +1,41 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  darkMode: 'class',
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
-        // Layered Obsidian with Solar Flare
-        base: '#080c1a',
-        surface: '#0e1a2b',
-        elevated: '#162a3f',
-        'border-subtle': 'rgba(255, 255, 255, 0.06)',
-        'border-glow': 'rgba(245, 158, 11, 0.25)',
-        'solar-amber': '#f59e0b',
-        'solar-amber-glow': '#fbbf24',
-        'sky-blue': '#38bdf8',
-        emerald: '#10b981',
-        rose: '#f43f5e',
-        'text-primary': '#f1f5f9',
-        'text-secondary': '#94a3b8',
-        'text-muted': '#475569',
+        // --- New Base (Kills the blue) ---
+        carbon: '#060a14',      // Deepest void
+        'carbon-light': '#0b1220',
+        
+        // --- Premium Metallic Accents ---
+        gold: '#c9973e',        // Aged Bullion (replaces #f59e0b)
+        'gold-glow': 'rgba(201, 151, 62, 0.25)',
+        cyan: '#4dd0e1',        // Tiffany/Cerulean (replaces #38bdf8)
+        jade: '#2dd4a8',        // Mint/Teal (replaces #10b981)
+        crimson: '#e5484d',     // Apple-style red (replaces #f43f5e)
+        
+        // --- Text (Cooler, calmer) ---
+        'text-primary': '#eef2f6',
+        'text-secondary': '#7a8ba3',
+        'text-muted': '#4a5a72',
+        
+        // --- Glass Surface ---
+        'glass-bg': 'rgba(6, 10, 20, 0.75)',
+        'glass-border': 'rgba(255, 255, 255, 0.04)',
+        'glass-rim': 'rgba(255, 255, 255, 0.08)',
       },
       fontFamily: {
-        sans: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
-        display: ['"JetBrains Mono"', 'monospace'],
+        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'monospace'],
       },
-      fontSize: {
-        display: ['2.25rem', { lineHeight: '1.1', letterSpacing: '-0.02em', fontWeight: '700' }],
-        h1: ['1.85rem', { lineHeight: '1.2', letterSpacing: '-0.01em', fontWeight: '600' }],
-        h2: ['1.15rem', { lineHeight: '1.3', letterSpacing: '-0.01em', fontWeight: '600' }],
-        body: ['0.875rem', { lineHeight: '1.6', fontWeight: '400' }],
-        mono: ['0.8rem', { lineHeight: '1.6', fontWeight: '400' }],
-        '2xs': ['0.65rem', { lineHeight: '1rem' }],
-        '3xs': ['0.58rem', { lineHeight: '0.9rem' }],
-      },
       boxShadow: {
-        'glass': '0 8px 32px rgba(0, 0, 0, 0.5)',
-        'glass-hover': '0 16px 48px rgba(0, 0, 0, 0.65), 0 0 24px rgba(245, 158, 11, 0.12)',
-        'amber-glow': '0 0 24px rgba(245, 158, 11, 0.3)',
-        'sky-glow': '0 0 24px rgba(56, 189, 248, 0.3)',
-        'emerald-glow': '0 0 24px rgba(16, 185, 129, 0.3)',
-      },
-      borderRadius: {
-        'panel': '16px',
+        'premium': '0 20px 60px -12px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.02)',
+        'glow-gold': '0 0 40px -8px rgba(201,151,62,0.15)',
       },
       animation: {
-        'pulse-glow': 'pulseGlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'spin-slow': 'spin 20s linear infinite',
-      },
-      keyframes: {
-        pulseGlow: {
-          '0%, 100%': { opacity: '1', transform: 'scale(1)' },
-          '50%': { opacity: '0.7', transform: 'scale(1.04)' },
-        },
-      },
+        'pulse-gold': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      }
     },
   },
   plugins: [],
