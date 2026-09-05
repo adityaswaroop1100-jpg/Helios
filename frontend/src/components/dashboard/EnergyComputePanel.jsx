@@ -62,7 +62,7 @@ export default function EnergyComputePanel({
             className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg"
             style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)' }}
           >
-            <Zap size={17} className="text-amber-400" />
+            <Zap size={17} className="text-gold" />
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <div>
@@ -71,7 +71,7 @@ export default function EnergyComputePanel({
             </div>
             <button
               onClick={onOpenLocationModal}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-2xs text-sky-400 hover:text-sky-300 font-semibold transition-all hover:bg-sky-500/10"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-2xs text-cyan hover:text-cyan font-semibold transition-all hover:bg-cyan-dim"
               style={{ background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.2)' }}
             >
               <MapPin size={11} />
@@ -84,9 +84,9 @@ export default function EnergyComputePanel({
         <div className="flex items-center gap-2">
           <span
             className="text-2xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5 font-display"
-            style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}
+            style={{ background: 'rgba(45,212,168,0.10)', color: '#2dd4a8', border: '1px solid rgba(16,185,129,0.3)' }}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="w-1.5 h-1.5 rounded-full bg-jade animate-pulse" />
             Satellite Synced
           </span>
           {onRefresh && (
@@ -108,15 +108,15 @@ export default function EnergyComputePanel({
         <div className="p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-              <Layers size={15} className="text-sky-400" />
+              <Layers size={15} className="text-cyan" />
               <span>Solar Array Health</span>
             </div>
             <span
               className={`text-3xs font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider font-display ${
-                isNominal ? 'text-emerald-400' : 'text-rose-400'
+                isNominal ? 'text-jade' : 'text-crimson'
               }`}
               style={{
-                background: isNominal ? 'rgba(16,185,129,0.12)' : 'rgba(244,63,94,0.12)',
+                background: isNominal ? 'rgba(45,212,168,0.10)' : 'rgba(244,63,94,0.12)',
                 border: isNominal ? '1px solid rgba(16,185,129,0.25)' : '1px solid rgba(244,63,94,0.25)',
               }}
             >
@@ -150,7 +150,7 @@ export default function EnergyComputePanel({
                       fault === 'Offline'
                         ? 'linear-gradient(135deg, #f43f5e, #be123c)'
                         : fault === 'Underperforming'
-                        ? 'linear-gradient(135deg, #f59e0b, #b45309)'
+                        ? 'linear-gradient(135deg, #c9973e, #a07828)'
                         : 'linear-gradient(135deg, #0ea5e9, #0369a1)',
                     opacity: fault === 'Offline' ? 0.9 : 0.85,
                     boxShadow: fault ? '0 0 10px rgba(244,63,94,0.4)' : 'none',
@@ -166,14 +166,14 @@ export default function EnergyComputePanel({
         <div className="p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-              <Sun size={15} className="text-amber-400" />
+              <Sun size={15} className="text-gold" />
               <span>Solar Irradiance (GHI)</span>
             </div>
             <span
               className="text-3xs font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider font-display"
               style={{
                 background: 'rgba(245,158,11,0.12)',
-                color: '#f59e0b',
+                color: '#c9973e',
                 border: '1px solid rgba(245,158,11,0.25)',
               }}
             >
@@ -183,7 +183,7 @@ export default function EnergyComputePanel({
 
           <div>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-display font-extrabold text-amber-400 tracking-tight">
+              <span className="text-3xl font-display font-extrabold text-gold tracking-tight">
                 {activeIrradiance}
               </span>
               <span className="text-sm text-slate-400 font-semibold">W/m²</span>
@@ -201,7 +201,7 @@ export default function EnergyComputePanel({
                 className="h-full rounded-full transition-all duration-700"
                 style={{
                   width: `${Math.min(100, (activeIrradiance / 1000) * 100)}%`,
-                  background: 'linear-gradient(90deg, #f59e0b, #fbbf24)',
+                  background: 'linear-gradient(90deg, #c9973e, #dbb060)',
                   boxShadow: '0 0 14px rgba(245,158,11,0.4)',
                 }}
               />
@@ -218,14 +218,14 @@ export default function EnergyComputePanel({
         <div className="p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-              <Thermometer size={15} className="text-emerald-400" />
+              <Thermometer size={15} className="text-jade" />
               <span>Calculated AC Yield</span>
             </div>
             <span
               className="text-3xs font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider font-display"
               style={{
-                background: 'rgba(16,185,129,0.12)',
-                color: '#10b981',
+                background: 'rgba(45,212,168,0.10)',
+                color: '#2dd4a8',
                 border: '1px solid rgba(16,185,129,0.25)',
               }}
             >
@@ -235,7 +235,7 @@ export default function EnergyComputePanel({
 
           <div>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-display font-extrabold text-emerald-400 tracking-tight">
+              <span className="text-3xl font-display font-extrabold text-jade tracking-tight">
                 {displayPowerKW}
               </span>
               <span className="text-sm text-slate-400 font-semibold">kW Active</span>
@@ -263,9 +263,9 @@ export default function EnergyComputePanel({
         >
           {[
             ['Aperture Total Area', `${PANEL_SPECS.totalAreaM2.toFixed(2)} m²`, 'text-white'],
-            ['Angle of Incidence (AOI)', physics.aoiFactor, 'text-sky-400'],
-            ['NOCT Thermal Derate', physics.tempDerate, 'text-amber-400'],
-            ['Central Inverter MPPT', '98.4%', 'text-emerald-400'],
+            ['Angle of Incidence (AOI)', physics.aoiFactor, 'text-cyan'],
+            ['NOCT Thermal Derate', physics.tempDerate, 'text-gold'],
+            ['Central Inverter MPPT', '98.4%', 'text-jade'],
           ].map(([label, val, color]) => (
             <div
               key={label}

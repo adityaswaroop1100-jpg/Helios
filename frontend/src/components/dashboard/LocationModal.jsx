@@ -70,7 +70,7 @@ export default function LocationModal({ isOpen, onClose, currentLocation, onSele
         <div className="flex items-center justify-between p-5 border-b border-slate-800 bg-slate-950/60">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center">
-              <Compass size={18} className="text-sky-400" />
+              <Compass size={18} className="text-cyan" />
             </div>
             <div>
               <h2 className="font-bold text-sm text-white">Select Solar Telemetry Node</h2>
@@ -98,7 +98,7 @@ export default function LocationModal({ isOpen, onClose, currentLocation, onSele
               autoFocus
             />
             {isSearching && (
-              <Loader2 size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sky-400 animate-spin" />
+              <Loader2 size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-cyan animate-spin" />
             )}
           </div>
 
@@ -106,7 +106,7 @@ export default function LocationModal({ isOpen, onClose, currentLocation, onSele
           <button
             onClick={handleUseGPS}
             disabled={isGpsLoading}
-            className="w-full py-2.5 px-3 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-400 text-xs font-semibold flex items-center justify-center gap-2 transition-all"
+            className="w-full py-2.5 px-3 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-cyan text-xs font-semibold flex items-center justify-center gap-2 transition-all"
           >
             {isGpsLoading ? (
               <>
@@ -122,7 +122,7 @@ export default function LocationModal({ isOpen, onClose, currentLocation, onSele
           </button>
 
           {gpsError && (
-            <div className="text-2xs text-rose-400 p-2 rounded-lg bg-rose-500/10 border border-rose-500/20">
+            <div className="text-2xs text-crimson p-2 rounded-lg bg-rose-500/10 border border-rose-500/20">
               {gpsError}
             </div>
           )}
@@ -146,9 +146,9 @@ export default function LocationModal({ isOpen, onClose, currentLocation, onSele
                     className="w-full p-3 rounded-xl bg-slate-950/60 hover:bg-slate-800/80 border border-slate-800/80 hover:border-sky-500/40 text-left transition-all flex items-center justify-between group"
                   >
                     <div className="flex items-center gap-2.5">
-                      <MapPin size={14} className="text-sky-400 shrink-0" />
+                      <MapPin size={14} className="text-cyan shrink-0" />
                       <div>
-                        <div className="font-semibold text-xs text-white group-hover:text-sky-300 transition-colors">
+                        <div className="font-semibold text-xs text-white group-hover:text-cyan transition-colors">
                           {loc.name}, <span className="text-slate-400 font-normal">{loc.region || loc.country}</span>
                         </div>
                         <div className="text-2xs text-slate-500 font-display">
@@ -156,7 +156,7 @@ export default function LocationModal({ isOpen, onClose, currentLocation, onSele
                         </div>
                       </div>
                     </div>
-                    <Radio size={14} className="text-slate-600 group-hover:text-sky-400 transition-colors" />
+                    <Radio size={14} className="text-slate-600 group-hover:text-cyan transition-colors" />
                   </button>
                 ))}
               </div>
@@ -165,7 +165,7 @@ export default function LocationModal({ isOpen, onClose, currentLocation, onSele
             <div>
               <div className="text-2xs font-semibold text-slate-400 uppercase tracking-wider mb-2.5 flex items-center justify-between">
                 <span>Featured Global Solar Telemetry Hubs</span>
-                <span className="text-emerald-400 flex items-center gap-1">
+                <span className="text-jade flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   Open-Meteo Synced
                 </span>
@@ -188,9 +188,9 @@ export default function LocationModal({ isOpen, onClose, currentLocation, onSele
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
-                        <MapPin size={13} className={isSelected ? 'text-sky-400' : 'text-slate-400'} />
+                        <MapPin size={13} className={isSelected ? 'text-cyan' : 'text-slate-400'} />
                         <div>
-                          <div className={`font-semibold text-xs ${isSelected ? 'text-sky-300' : 'text-slate-200'}`}>
+                          <div className={`font-semibold text-xs ${isSelected ? 'text-cyan' : 'text-slate-200'}`}>
                             {node.name}
                           </div>
                           <div className="text-2xs text-slate-400">
@@ -198,7 +198,7 @@ export default function LocationModal({ isOpen, onClose, currentLocation, onSele
                           </div>
                         </div>
                       </div>
-                      {isSelected && <Check size={14} className="text-sky-400" />}
+                      {isSelected && <Check size={14} className="text-cyan" />}
                     </button>
                   );
                 })}
@@ -210,7 +210,7 @@ export default function LocationModal({ isOpen, onClose, currentLocation, onSele
         {/* Footer info */}
         <div className="p-3.5 bg-slate-950/80 border-t border-slate-800 flex items-center justify-between text-2xs text-slate-400">
           <span>Active Node: <b className="text-white">{currentLocation?.name || 'Chennai'}, {currentLocation?.country || 'India'}</b></span>
-          <span className="font-display text-sky-400">{currentLocation?.latitude?.toFixed(2)}°N, {currentLocation?.longitude?.toFixed(2)}°E</span>
+          <span className="font-display text-cyan">{currentLocation?.latitude?.toFixed(2)}°N, {currentLocation?.longitude?.toFixed(2)}°E</span>
         </div>
 
       </div>
