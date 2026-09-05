@@ -1,11 +1,26 @@
 # HELIOS SCADA — Next-Gen AI Solar PV Digital Twin & MLOps Platform
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Available-2dd4a8.svg?style=for-the-badge&logo=googlechrome&logoColor=white)](https://adityaswaroop1100-jpg.github.io/Helios/)
+[![Pitch Deck](https://img.shields.io/badge/Pitch%20Deck-Interactive%20Slides-c9973e.svg?style=for-the-badge&logo=revealjs&logoColor=white)](https://adityaswaroop1100-jpg.github.io/Helios/presentation/)
+[![Release](https://img.shields.io/badge/Release-v2.4.0-4dd0e1.svg?style=for-the-badge&logo=github&logoColor=white)](https://github.com/adityaswaroop1100-jpg/Helios/releases/tag/v2.4.0)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![React](https://img.shields.io/badge/React-18.3-61dafb.svg?logo=react&logoColor=black)](https://react.dev/)
 [![Three.js](https://img.shields.io/badge/Three.js-r170-black.svg?logo=threedotjs&logoColor=white)](https://threejs.org/)
 [![XGBoost](https://img.shields.io/badge/XGBoost-v2.0-orange.svg?logo=xgboost&logoColor=white)](https://xgboost.readthedocs.io/)
 [![Firebase](https://img.shields.io/badge/Firebase-Firestore-ffca28.svg?logo=firebase&logoColor=black)](https://firebase.google.com/)
 [![TailwindCSS](https://img.shields.io/badge/Tailwind-v3.4-38bdf8.svg?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+
+---
+
+## 🌐 Live Web Access & Releases
+
+* **🚀 Launch Live SCADA Digital Twin**: [https://adityaswaroop1100-jpg.github.io/Helios/](https://adityaswaroop1100-jpg.github.io/Helios/)
+* **📊 Open Interactive Pitch Deck**: [https://adityaswaroop1100-jpg.github.io/Helios/presentation/](https://adityaswaroop1100-jpg.github.io/Helios/presentation/)
+* **📥 Download Official Pitch Deck (PPTX)**: [Download `.pptx` File](https://github.com/adityaswaroop1100-jpg/Helios/raw/main/HELIOS_ORION_1.0_Pitch_Deck.pptx)
+* **🏷️ GitHub Release Tag**: [Release v2.4.0 (Production)](https://github.com/adityaswaroop1100-jpg/Helios/releases/tag/v2.4.0)
+
+---
 
 **HELIOS** is an industrial-grade Solar Photovoltaic (PV) Supervisory Control and Data Acquisition (**SCADA**) platform and **3D WebGL Digital Twin**. Designed for utility-scale and commercial microgrids, HELIOS combines real-time satellite irradiance telemetry, physics-based single-axis tracker kinematics, gradient-boosted decision tree ML forecasting (**XGBoost $R^2 = 99.89\%$**), sub-second anomaly isolation, and **Google Firebase Firestore** cloud streaming.
 
