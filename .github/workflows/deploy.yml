@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -18,9 +18,6 @@ concurrency:
 
 jobs:
   build-and-deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -30,31 +27,28 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
 
       - name: Install Frontend Dependencies
         working-directory: ./frontend
-        run: npm ci --legacy-peer-deps
+        run: npm install --legacy-peer-deps
 
       - name: Build Production Web App
         working-directory: ./frontend
         run: npm run build
 
-      - name: Copy Presentation Assets into Build
+      - name: Prepare Assets & Prevent Jekyll Filtering
         run: |
           mkdir -p frontend/dist/presentation
-          cp -r presentation/* frontend/dist/presentation/ || true
-          cp HELIOS_ORION_1.0_Pitch_Deck.pptx frontend/dist/ || true
+          cp -r presentation/* frontend/dist/presentation/ 2>/dev/null || true
+          cp HELIOS_ORION_1.0_Pitch_Deck.pptx frontend/dist/ 2>/dev/null || true
+          # Essential for GitHub Pages to serve all assets properly
+          touch frontend/dist/.nojekyll
+          # Add fallback index for SPA routing if needed
+          cp frontend/dist/index.html frontend/dist/404.html
 
-      - name: Setup GitHub Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload Artifacts
-        uses: actions/upload-pages-artifact@v3
+      - name: Deploy to GitHub Pages Branch (gh-pages)
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          path: './frontend/dist'
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          folder: frontend/dist
+          branch: gh-pages
+          clean: true
