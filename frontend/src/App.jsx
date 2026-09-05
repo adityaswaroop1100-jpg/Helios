@@ -359,7 +359,7 @@ export default function App() {
   );
 
   return (
-    <div className="min-h-screen text-slate-100 font-sans flex flex-col antialiased selection:bg-sky-500/30 selection:text-sky-200">
+    <div className="min-h-screen text-text-primary font-sans flex flex-col antialiased selection:bg-gold/25 selection:text-text-primary">
       <OnboardingModal
         isOpen={showOnboarding}
         onClose={() => setShowOnboarding(false)}
@@ -572,26 +572,26 @@ export default function App() {
         )}
       </main>
 
-      {/* ── Footer ── */}
-      <footer className="py-5 border-t border-white/[0.05] mt-4">
+      <footer className="py-4 mt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
         <div className="max-w-7xl mx-auto px-5 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5 text-xs text-slate-600">
+          <div className="flex items-center gap-2.5 text-xs text-text-muted">
             <div className="w-5 h-5 rounded-lg flex items-center justify-center"
-              style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)' }}>
-              <Sun size={11} className="text-amber-500" />
+              style={{ background: 'rgba(201,151,62,0.12)', border: '1px solid rgba(201,151,62,0.25)' }}>
+              <Sun size={11} className="text-gold" />
             </div>
-            <span className="font-semibold text-slate-500">HELIOS SCADA</span>
-            <span className="text-slate-700">·</span>
-            <span>48 kW Industrial Solar Platform</span>
-            <span className="text-slate-700">·</span>
-            <span>Open-Meteo Satellite Feed</span>
+            <span className="font-semibold text-text-secondary font-mono">HELIOS SCADA</span>
+            <span className="text-text-dim">·</span>
+            <span className="font-mono">48 kW Industrial Solar Digital Twin</span>
+            <span className="text-text-dim">·</span>
+            <span className="font-mono">Open-Meteo Satellite Feed</span>
           </div>
-          <div className="text-2xs text-slate-700 font-mono">
-            Node: <span className="text-slate-500">{location.name}, {location.country}</span>
+          <div className="text-2xs text-text-muted font-mono">
+            Node: <span className="text-text-secondary">{location.name}, {location.country}</span>
             &nbsp;·&nbsp;{location.latitude}°N {location.longitude}°E
           </div>
         </div>
       </footer>
+
     </div>
   );
 }

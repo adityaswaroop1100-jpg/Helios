@@ -1,45 +1,49 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, CheckCircle2, Loader2, BatteryCharging, X, Zap, AlertTriangle, Moon, Activity, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Loader2, BatteryCharging, X, Zap, AlertTriangle, Moon, Activity } from 'lucide-react';
 import { getRecommendations } from '../../api/forecastApi';
 
 const TYPE_CONFIG = {
   RAMP_PHASE: {
-    color: '#38bdf8',
-    bg: 'rgba(56,189,248,0.12)',
-    border: 'rgba(56,189,248,0.3)',
+    color: '#4dd0e1',
+    bg: 'rgba(77,208,225,0.10)',
+    border: 'rgba(77,208,225,0.25)',
     icon: Activity,
-    dot: '#38bdf8',
-    pill: 'bg-sky-500/15 text-sky-400 border-sky-500/30',
+    activeBg: 'rgba(45,212,168,0.12)',
+    activeBorder: 'rgba(45,212,168,0.30)',
+    activeColor: '#2dd4a8',
   },
   PEAK_GENERATION: {
-    color: '#f59e0b',
-    bg: 'rgba(245,158,11,0.12)',
-    border: 'rgba(245,158,11,0.3)',
+    color: '#c9973e',
+    bg: 'rgba(201,151,62,0.10)',
+    border: 'rgba(201,151,62,0.25)',
     icon: Zap,
-    dot: '#f59e0b',
-    pill: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+    activeBg: 'rgba(45,212,168,0.12)',
+    activeBorder: 'rgba(45,212,168,0.30)',
+    activeColor: '#2dd4a8',
   },
   ANOMALY_WARNING: {
-    color: '#f43f5e',
-    bg: 'rgba(244,63,94,0.12)',
-    border: 'rgba(244,63,94,0.35)',
+    color: '#e5484d',
+    bg: 'rgba(229,72,77,0.10)',
+    border: 'rgba(229,72,77,0.28)',
     icon: AlertTriangle,
-    dot: '#f43f5e',
-    pill: 'bg-rose-500/15 text-rose-400 border-rose-500/30',
+    activeBg: 'rgba(45,212,168,0.12)',
+    activeBorder: 'rgba(45,212,168,0.30)',
+    activeColor: '#2dd4a8',
   },
   NIGHT_MODE: {
-    color: '#818cf8',
-    bg: 'rgba(129,140,248,0.12)',
-    border: 'rgba(129,140,248,0.3)',
+    color: '#a78bfa',
+    bg: 'rgba(167,139,250,0.10)',
+    border: 'rgba(167,139,250,0.25)',
     icon: Moon,
-    dot: '#818cf8',
-    pill: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30',
+    activeBg: 'rgba(45,212,168,0.12)',
+    activeBorder: 'rgba(45,212,168,0.30)',
+    activeColor: '#2dd4a8',
   },
 };
 
 function useActionDispatch() {
   const [status, setStatus] = useState('idle');
-  const dispatch = (label) => {
+  const dispatch = () => {
     if (status !== 'idle') return;
     setStatus('dispatching');
     setTimeout(() => setStatus('active'), 1200);
@@ -61,101 +65,91 @@ export default function RecommendationBanner({ currentHourData, faultedPanels = 
   const TypeIcon = cfg.icon;
   const isActive = status === 'active';
 
+  const activeCfg = isActive
+    ? { color: cfg.activeColor, bg: cfg.activeBg, border: cfg.activeBorder }
+    : cfg;
+
   return (
     <div
-      className="data-card rounded-2xl overflow-hidden transition-all shadow-xl"
-      style={{ border: `1px solid ${isActive ? 'rgba(16,185,129,0.4)' : cfg.border}` }}
+      className="data-card rounded-xl2 overflow-hidden transition-all"
+      style={{ border: `1px solid ${activeCfg.border}` }}
     >
-      {/* Top Accent Neon Line */}
-      <div
-        className="h-[2px]"
-        style={{ background: `linear-gradient(90deg, transparent 5%, ${isActive ? '#10b981' : cfg.color} 50%, transparent 95%)` }}
-      />
+      {/* Top accent line */}
+      <div className="h-px"
+        style={{ background: `linear-gradient(90deg, transparent 5%, ${activeCfg.color} 50%, transparent 95%)` }} />
 
-      {/* Main HUD Content Row */}
-      <div className="flex items-center gap-4 px-6 py-4 flex-wrap">
-        {/* Glowing Icon Shield */}
-        <div
-          className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg"
-          style={{
-            background: isActive ? 'rgba(16,185,129,0.15)' : cfg.bg,
-            border: `1px solid ${isActive ? 'rgba(16,185,129,0.3)' : cfg.border}`,
-          }}
-        >
-          <TypeIcon size={21} style={{ color: isActive ? '#10b981' : cfg.color }} />
+      {/* Main row */}
+      <div className="flex items-center gap-4 px-5 py-3.5 flex-wrap">
+        {/* Icon */}
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: activeCfg.bg, border: `1px solid ${activeCfg.border}` }}>
+          <TypeIcon size={18} style={{ color: activeCfg.color }} />
         </div>
 
-        {/* Text Details */}
+        {/* Text */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2.5 flex-wrap mb-1">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
             <span
-              className={`text-3xs font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full flex items-center gap-1.5 border font-display ${cfg.pill}`}
+              className="text-3xs font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1.5"
+              style={{ background: activeCfg.bg, color: activeCfg.color, border: `1px solid ${activeCfg.border}` }}
             >
-              <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: cfg.dot }} />
-              {recommendation.type.replace('_', ' ')}
+              <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: activeCfg.color }} />
+              {recommendation.type?.replace('_', ' ') || 'SYSTEM'}
             </span>
-            <span className="text-3xs text-slate-500 font-semibold tracking-wider uppercase font-display">
+            <span className="text-3xs text-text-muted font-mono uppercase tracking-wider">
               SCADA Decision Engine · Automated Dispatch
             </span>
           </div>
-
-          <div className="font-bold text-base text-white tracking-tight">{recommendation.title}</div>
-          <div className="text-xs text-slate-400 line-clamp-1 max-w-3xl mt-0.5">{recommendation.description}</div>
+          <div className="font-bold text-sm text-text-primary tracking-tight">{recommendation.title}</div>
+          <div className="text-2xs text-text-secondary line-clamp-1 mt-0.5 font-mono">{recommendation.description}</div>
         </div>
 
         {/* Action Button */}
         <div className="flex-shrink-0">
           {status === 'idle' && (
             <button
-              onClick={() => dispatch(recommendation.actionText)}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all hover:scale-105 active:scale-95 shadow-md"
-              style={{
-                background: cfg.bg,
-                color: cfg.color,
-                border: `1px solid ${cfg.border}`,
-                boxShadow: `0 0 16px ${cfg.color}25`,
-              }}
+              onClick={dispatch}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-2xs uppercase tracking-wider transition-all hover:scale-105 active:scale-95 font-mono"
+              style={{ background: activeCfg.bg, color: activeCfg.color, border: `1px solid ${activeCfg.border}`, boxShadow: `0 0 16px ${activeCfg.color}20` }}
             >
               <span>{recommendation.actionText}</span>
-              <ArrowRight size={14} />
+              <ArrowRight size={13} />
             </button>
           )}
 
           {status === 'dispatching' && (
-            <div
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider"
-              style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}
-            >
-              <Loader2 size={14} className="animate-spin" />
-              <span>Transmitting Command…</span>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-xl text-2xs font-bold uppercase tracking-wider font-mono"
+              style={{ background: activeCfg.bg, color: activeCfg.color, border: `1px solid ${activeCfg.border}` }}>
+              <Loader2 size={13} className="animate-spin" />
+              <span>Transmitting…</span>
             </div>
           )}
 
           {status === 'active' && (
             <button
               onClick={reset}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-glow-emerald"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-2xs font-bold uppercase tracking-wider font-mono transition-all"
+              style={{ background: 'rgba(45,212,168,0.12)', color: '#2dd4a8', border: '1px solid rgba(45,212,168,0.28)' }}
             >
-              <CheckCircle2 size={14} />
-              <span>Dispatched to Inverter</span>
-              <X size={12} className="text-slate-400 ml-1" />
+              <CheckCircle2 size={13} />
+              <span>Dispatched</span>
+              <X size={11} className="text-text-muted ml-1" />
             </button>
           )}
         </div>
       </div>
 
-      {/* BESS Active Telemetry Strip */}
-      {status === 'active' && (
-        <div
-          className="px-6 pb-4 pt-3 flex flex-wrap items-center gap-3 border-t border-emerald-500/20 bg-emerald-500/[0.04] animate-fadeInFast"
-        >
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-400 font-display">
-            <BatteryCharging size={16} />
+      {/* BESS strip */}
+      {isActive && (
+        <div className="px-5 pb-3 pt-2.5 flex flex-wrap items-center gap-3 animate-fadeIn"
+          style={{ borderTop: '1px solid rgba(45,212,168,0.15)', background: 'rgba(45,212,168,0.04)' }}>
+          <div className="flex items-center gap-2 text-2xs font-bold uppercase tracking-wider text-jade font-mono">
+            <BatteryCharging size={14} />
             <span>BESS Dynamic Dispatch Active</span>
           </div>
-          <span className="text-slate-600">·</span>
-          <div className="text-xs text-slate-300">
-            50 kWh Storage buffer engaged · Diverting surplus generation to avoid grid peak curtailment penalty.
+          <span className="text-text-muted">·</span>
+          <div className="text-2xs text-text-secondary font-mono">
+            50 kWh buffer engaged · Surplus diverted to avoid grid curtailment penalty.
           </div>
         </div>
       )}

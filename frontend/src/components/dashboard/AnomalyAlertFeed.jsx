@@ -1,116 +1,98 @@
-import React from 'react';
-import { AlertTriangle, CheckCircle2, ShieldAlert, Clock } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import React, { useState } from 'react';
+import { AlertTriangle, CheckCircle2, Clock, ShieldAlert } from 'lucide-react';
 
-export default function AnomalyAlertFeed({
-  events = [],
-  className,
-}) {
-  const sampleEvents = events.length > 0
-    ? events
-    : [
-        {
-          id: 'ev-1',
-          time: '14:22:04',
-          title: 'Diode Bypass Fault Isolated (String A-7)',
-          desc: 'P1000 MLPE reported voltage collapse (42.1V -> 4.2V). Electronic DC contactor isolated string in 12ms.',
-          severity: 'CRITICAL',
-          source: 'RTU Sensor #7',
-        },
-        {
-          id: 'ev-2',
-          time: '13:45:10',
-          title: 'BESS Standing Reserve Auto-Dispatch',
-          desc: 'Transient cloud occlusion compensated. Dispatched +3.8 kW buffer to eliminate frequency droop.',
-          severity: 'NOMINAL',
-          source: 'BESS Controller',
-        },
-        {
-          id: 'ev-3',
-          time: '12:00:00',
-          title: 'Solar Zenith Astronomical Alignment',
-          desc: 'Single-axis tracker achieved 0.0° optimal normal incidence angle. Inverter efficiency at 98.4%.',
-          severity: 'INFO',
-          source: 'Astronomical Kinematics',
-        },
-      ];
+const SAMPLE_EVENTS = [
+  {
+    id: 'ev-1',
+    time: '14:32:21',
+    title: 'String #3 Bypass Diode Fault — Auto-Isolated',
+    desc: 'String conductor anomaly detected. Solid-state DC breaker tripped in <12ms. BESS dispatch compensating.',
+    severity: 'CRITICAL',
+    source: 'SCADA Engine',
+  },
+  {
+    id: 'ev-2',
+    time: '12:00:00',
+    title: 'Solar Zenith Alignment — Peak Tracking Active',
+    desc: 'Astronomical tracker achieved 0.0° normal incidence. Inverter efficiency at 98.4%. MPPT locked to 641V.',
+    severity: 'NOMINAL',
+    source: 'Kinematic RTU',
+  },
+  {
+    id: 'ev-3',
+    time: '09:14:37',
+    title: 'Cloud Transient — Irradiance Suppressed 34%',
+    desc: 'Localized cumulus occlusion (cloud index 0.72). BESS auto-dispatch prevented generation gap. Cleared in 41s.',
+    severity: 'INFO',
+    source: 'Weather Engine',
+  },
+];
+
+const SEV_STYLE = {
+  CRITICAL: { color: '#e5484d', bg: 'rgba(229,72,77,0.10)', border: 'rgba(229,72,77,0.22)', Icon: AlertTriangle },
+  NOMINAL:  { color: '#2dd4a8', bg: 'rgba(45,212,168,0.10)', border: 'rgba(45,212,168,0.20)', Icon: CheckCircle2 },
+  INFO:     { color: '#4dd0e1', bg: 'rgba(77,208,225,0.08)', border: 'rgba(77,208,225,0.18)', Icon: Clock },
+};
+
+export default function AnomalyAlertFeed({ className = '' }) {
+  const events = SAMPLE_EVENTS;
 
   return (
-    <div className={cn('glass-panel p-5 flex flex-col justify-between h-full shadow-lg', className)}>
-      <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-border-subtle">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-surface border border-border-glow flex items-center justify-center text-rose shadow-sm">
-            <ShieldAlert size={16} />
+    <div className={`data-card rounded-xl2 p-5 flex flex-col h-full ${className}`}>
+      {/* Header */}
+      <div className="flex items-center justify-between pb-3 mb-3"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center"
+            style={{ background: 'rgba(229,72,77,0.10)', border: '1px solid rgba(229,72,77,0.22)' }}>
+            <ShieldAlert size={15} className="text-crimson" />
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-text-primary tracking-tight">Live SCADA Anomaly Audit Feed</h2>
-            <p className="text-mono text-3xs text-text-muted mt-0.5">Millisecond Incident Resolution Log</p>
+            <h2 className="text-sm font-bold text-text-primary tracking-tight">Live SCADA Anomaly Audit</h2>
+            <p className="text-3xs text-text-muted font-mono mt-0.5">Millisecond Incident Resolution Log</p>
           </div>
         </div>
-        <span className="text-mono text-3xs font-bold px-2 py-0.5 rounded-full bg-surface border border-border-subtle text-text-secondary">
-          STREAMING 100 Hz
-        </span>
+        <span className="badge-cyan">100 Hz</span>
       </div>
 
-      <div className="space-y-2.5 my-auto">
-        {sampleEvents.map((ev) => {
-          const isCritical = ev.severity === 'CRITICAL';
-          const isNominal = ev.severity === 'NOMINAL';
-
+      {/* Events */}
+      <div className="space-y-2 flex-1 overflow-y-auto">
+        {events.map((ev) => {
+          const s = SEV_STYLE[ev.severity] || SEV_STYLE.INFO;
+          const SevIcon = s.Icon;
           return (
             <div
               key={ev.id}
-              className={cn(
-                'p-3 rounded-xl border flex flex-col sm:flex-row items-start justify-between gap-2.5 transition-all shadow-sm',
-                isCritical
-                  ? 'bg-rose/10 border-rose/30'
-                  : isNominal
-                  ? 'bg-emerald/10 border-emerald/30'
-                  : 'bg-surface/60 border-border-subtle'
-              )}
+              className="p-3 rounded-xl flex items-start justify-between gap-2.5 transition-all"
+              style={{ background: s.bg, border: `1px solid ${s.border}` }}
             >
-              <div className="flex items-start gap-2.5">
-                <div
-                  className={cn(
-                    'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5',
-                    isCritical
-                      ? 'bg-rose/20 text-rose'
-                      : isNominal
-                      ? 'bg-emerald/20 text-emerald'
-                      : 'bg-surface text-sky-blue'
-                  )}
-                >
-                  {isCritical ? (
-                    <AlertTriangle size={14} />
-                  ) : isNominal ? (
-                    <CheckCircle2 size={14} />
-                  ) : (
-                    <Clock size={14} />
-                  )}
+              <div className="flex items-start gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+                  style={{ background: s.bg, color: s.color }}>
+                  <SevIcon size={13} />
                 </div>
-
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <span className="font-semibold text-xs text-text-primary">{ev.title}</span>
-                    <span className="text-mono text-3xs px-1.5 py-0.5 rounded bg-base border border-border-subtle text-text-muted">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                    <span className="font-semibold text-2xs text-text-primary">{ev.title}</span>
+                    <span className="text-3xs font-mono px-1.5 py-0.5 rounded"
+                      style={{ background: 'rgba(255,255,255,0.05)', color: '#7a8ba3', border: '1px solid rgba(255,255,255,0.07)' }}>
                       {ev.source}
                     </span>
                   </div>
-                  <p className="text-3xs text-text-secondary leading-relaxed max-w-xl">{ev.desc}</p>
+                  <p className="text-3xs text-text-secondary leading-relaxed">{ev.desc}</p>
                 </div>
               </div>
-
-              <div className="text-mono text-3xs text-text-muted font-display shrink-0 text-right">
-                {ev.time}
-              </div>
+              <span className="font-mono text-3xs text-text-muted shrink-0">{ev.time}</span>
             </div>
           );
         })}
       </div>
 
-      <div className="mt-3 pt-2.5 border-t border-border-subtle flex items-center justify-between text-mono text-3xs text-text-muted">
-        <span>Cloud Database: Google Firebase Firestore</span>
-        <span className="text-solar-amber font-semibold">Zero Disk Footprint</span>
+      {/* Footer */}
+      <div className="mt-3 pt-2.5 flex items-center justify-between font-mono text-3xs text-text-muted"
+        style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+        <span>Firebase Firestore · Zero Local Disk</span>
+        <span className="text-gold font-semibold">Zero Disk Footprint</span>
       </div>
     </div>
   );
