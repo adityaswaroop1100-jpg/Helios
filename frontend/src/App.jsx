@@ -42,7 +42,7 @@ function getCityLocalTime(location) {
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [splashDone, setSplashDone] = useState(false);
-  const [demoMode, setDemoMode] = useState(true);
+  const [demoMode, setDemoMode] = useState(false);
   const [dashTourStep, setDashTourStep] = useState(null);
   const [location, setLocation] = useState(() => {
     try {
