@@ -42,7 +42,7 @@ function getCityLocalTime(location) {
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [splashDone, setSplashDone] = useState(false);
-  const [demoMode, setDemoMode] = useState(false);
+  const [demoMode, setDemoMode] = useState(true);
   const [dashTourStep, setDashTourStep] = useState(null);
   const [location, setLocation] = useState(() => {
     try {
@@ -436,7 +436,7 @@ export default function App() {
   );
 
   return (
-    <div className="min-h-screen text-text-primary font-sans flex flex-col antialiased selection:bg-gold/25 selection:text-text-primary">
+    <div className="min-h-screen text-text-primary font-sans flex flex-col antialiased selection:bg-gold/25 selection:text-text-primary archival-container">
       {/* ── Cinematic Splash ── */}
       {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
 

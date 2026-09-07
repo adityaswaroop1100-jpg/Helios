@@ -228,13 +228,32 @@ body {
   80%, 100% { transform: scale(2.2); opacity: 0; }
 }
 
-/* 7. SCROLLBAR */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(201, 151, 62, 0.25); border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(201, 151, 62, 0.45); }
+/* 7. ARCHIVAL SCREENSHOT: HIDE ALL SCROLLBARS */
+::-webkit-scrollbar {
+  display: none !important;
+  width: 0px !important;
+  height: 0px !important;
+}
+* {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
 
-/* 8. SELECTION */
+/* 8. 16:9 FIXED ARCHIVAL SCREENSHOT CONTAINER (1920x1080 Equivalent) */
+.archival-container {
+  width: 100%;
+  max-width: 1920px;
+  margin: 0 auto;
+  overflow-x: hidden;
+}
+
+@media (min-width: 1400px) {
+  .archival-container {
+    min-height: 1080px;
+  }
+}
+
+/* 9. SELECTION */
 ::selection { background: rgba(201, 151, 62, 0.25); color: #eef2f6; }
 
 /* 9. DIVIDERS */

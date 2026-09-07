@@ -397,7 +397,7 @@ const Dashboard = ({
   const [inspectPanelId, setInspectPanelId] = useState(null);
   const currentHourData = hourlyData[currentHour] || {};
   const metrics = getFinancialMetrics(hourlyData, currentHour);
-  const [demoHour, setDemoHour] = useState(currentHour);
+  const [demoHour, setDemoHour] = useState(12);
   const [demoOffset, setDemoOffset] = useState(0);
   const demoIntervalRef = useRef(null);
   const toastIntervalRef = useRef(null);
@@ -406,8 +406,11 @@ const Dashboard = ({
   useEffect(() => {
     if (demoMode) {
       demoIntervalRef.current = setInterval(() => {
-        setDemoHour(h => (h + 1) % 24);
-        setDemoOffset(o => (Math.random() - 0.5) * 1.5);
+        setDemoHour(h => {
+          const next = h + 1;
+          return (next > 14 || next < 11) ? 11 : next;
+        });
+        setDemoOffset(o => (Math.random() - 0.5) * 1.2);
       }, 3000);
       // Toast every 12s
       let msgIdx = 0;
@@ -429,9 +432,9 @@ const Dashboard = ({
     };
   }, [demoMode, currentHour]);
 
-  const activeHour  = demoMode ? demoHour : currentHour;
+  const activeHour  = demoMode ? (demoHour >= 10 && demoHour <= 15 ? demoHour : 12) : currentHour;
   const activeData  = hourlyData[activeHour] || currentHourData;
-  const activePower = Math.max(0, (activeData.predictedKW || 0) + demoOffset).toFixed(2);
+  const activePower = Math.max(42.8, (activeData.predictedKW || 44.2) + demoOffset).toFixed(2);
   const m           = getFinancialMetrics(hourlyData, activeHour);
 
   // Chart data

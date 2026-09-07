@@ -773,7 +773,7 @@ export default function Solar3DScene({
     <div className="relative w-full h-[580px] rounded-2xl overflow-hidden glass-card shadow-2xl">
       <Canvas
         shadows="soft"
-        camera={{ position: [-10.0, 8.0, 14.0], fov: 40 }}
+        camera={{ position: [-11.5, 8.5, 15.5], fov: 38, near: 0.1, far: 200 }}
         gl={{
           antialias: true,
           toneMapping: THREE.ACESFilmicToneMapping,
