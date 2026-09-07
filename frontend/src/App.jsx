@@ -136,10 +136,24 @@ export default function App() {
     }
   };
 
-  // Live clock
-  const [isLiveClock, setIsLiveClock] = useState(true);
+  // Live clock: default initial visit to Dusk (18:00) so 3D twin renders the cinematic sunset twilight
+  const [isLiveClock, setIsLiveClock] = useState(() => {
+    try {
+      const saved = localStorage.getItem('helios_live_clock');
+      return saved !== null ? JSON.parse(saved) : false;
+    } catch {
+      return false;
+    }
+  });
   const [now, setNow] = useState(new Date());
-  const [hourOfDay, setHourOfDay] = useState(() => new Date().getHours());
+  const [hourOfDay, setHourOfDay] = useState(() => {
+    try {
+      const saved = localStorage.getItem('helios_hour');
+      return saved !== null ? Number(saved) : 18; // 18:00 Dusk preset
+    } catch {
+      return 18;
+    }
+  });
   const [isAutoPlay, setIsAutoPlay] = useState(false);
 
   // Panel selection
