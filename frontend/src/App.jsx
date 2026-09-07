@@ -614,6 +614,8 @@ export default function App() {
             onSelectHour={h => { setIsLiveClock(false); setHourOfDay(h); }}
             faultedPanels={faultedPanels}
             onSelectPanel={id => setSelectedPanel(id)}
+            onSetPanelFault={handleSetPanelFault}
+            onNavigateTab={handleTabChange}
             location={location}
             demoMode={demoMode}
             tourStep={dashTourStep}

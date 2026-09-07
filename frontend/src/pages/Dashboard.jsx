@@ -3,7 +3,8 @@ import { motion, AnimatePresence, useMotionValue, animate } from 'framer-motion'
 import {
   TrendingUp, TrendingDown, Zap, Sun, Battery,
   CloudRain, Activity, ShieldCheck, Play, Square,
-  Maximize2, RotateCcw, Layers, BarChart2, AlertTriangle
+  Maximize2, RotateCcw, Layers, BarChart2, AlertTriangle,
+  Cpu, Radio, Thermometer, CheckCircle2, X, Box, ArrowRight
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine
@@ -214,6 +215,170 @@ const DEMO_MESSAGES = [
   '✅ Grid synchronization nominal — 49.98 Hz · Zero droop',
 ];
 
+// ── Live Module Telemetry Inspector Modal ──────────────────────────────────────
+function ModuleInspectorModal({ panelId, fault, onClose, onSetFault, onViewIn3D }) {
+  const isFault = fault === 'Offline';
+  const isDegraded = fault === 'Underperforming';
+
+  const voltage = isFault ? '4.2' : isDegraded ? '18.4' : '41.8';
+  const current = isFault ? '0.0' : isDegraded ? '3.8' : '8.65';
+  const powerW = isFault ? '0' : isDegraded ? '70' : Math.round(parseFloat(voltage) * parseFloat(current));
+  const tempC = isFault ? '28.4' : isDegraded ? '56.2' : '44.2';
+
+  const stringNum = Math.ceil(panelId / 8);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn select-none">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        className="relative w-full max-w-md rounded-2xl glass-premium p-6 border shadow-2xl space-y-4"
+        style={{
+          background: 'rgba(8, 14, 28, 0.96)',
+          borderColor: isFault ? 'rgba(229,72,77,0.45)' : isDegraded ? 'rgba(201,151,62,0.4)' : 'rgba(77,208,225,0.3)',
+          boxShadow: `0 24px 64px rgba(0,0,0,0.95), 0 0 32px ${isFault ? 'rgba(229,72,77,0.2)' : 'rgba(77,208,225,0.1)'}`
+        }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center border"
+              style={{
+                background: isFault ? 'rgba(229,72,77,0.15)' : 'rgba(77,208,225,0.12)',
+                borderColor: isFault ? 'rgba(229,72,77,0.3)' : 'rgba(77,208,225,0.25)',
+                color: isFault ? '#e5484d' : '#4dd0e1'
+              }}>
+              <Cpu size={20} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-mono font-bold text-base text-text-primary">Module A-{panelId}</h3>
+                <span className="text-3xs font-mono font-bold px-2 py-0.5 rounded-full border uppercase"
+                  style={{
+                    background: isFault ? 'rgba(229,72,77,0.15)' : isDegraded ? 'rgba(201,151,62,0.15)' : 'rgba(45,212,168,0.12)',
+                    borderColor: isFault ? 'rgba(229,72,77,0.3)' : isDegraded ? 'rgba(201,151,62,0.3)' : 'rgba(45,212,168,0.3)',
+                    color: isFault ? '#e5484d' : isDegraded ? '#c9973e' : '#2dd4a8'
+                  }}>
+                  {fault || 'Nominal 100%'}
+                </span>
+              </div>
+              <p className="text-2xs font-mono text-text-muted mt-0.5">
+                String #{stringNum} · Smart Optimizer P1000 MLPE
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-white/[0.06] transition-colors"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* SunSpec RF Signal Status */}
+        <div className="flex items-center justify-between px-3.5 py-2 rounded-xl border"
+          style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'rgba(255,255,255,0.06)' }}>
+          <div className="flex items-center gap-2 text-2xs font-mono text-text-secondary">
+            <Radio size={12} className={isFault ? 'text-crimson' : 'text-jade'} />
+            <span>RF SunSpec Telemetry</span>
+          </div>
+          <span className="text-3xs font-mono font-bold" style={{ color: isFault ? '#e5484d' : '#2dd4a8' }}>
+            {isFault ? 'CIRCUIT ISOLATED (<12ms)' : 'RSSI -62 dBm · 100% LQI'}
+          </span>
+        </div>
+
+        {/* 4 Live Hardware Telemetry Tiles */}
+        <div className="grid grid-cols-2 gap-2.5">
+          <div className="p-3 rounded-xl border space-y-1"
+            style={{ background: 'rgba(6,10,20,0.8)', borderColor: 'rgba(255,255,255,0.06)' }}>
+            <span className="text-3xs font-mono uppercase text-text-muted">DC Bus Voltage</span>
+            <div className="font-mono font-bold text-lg text-cyan">{voltage} <span className="text-2xs text-text-muted">V</span></div>
+            <div className="text-3xs font-mono text-text-dim">Nominal: 41.8 V</div>
+          </div>
+
+          <div className="p-3 rounded-xl border space-y-1"
+            style={{ background: 'rgba(6,10,20,0.8)', borderColor: 'rgba(255,255,255,0.06)' }}>
+            <span className="text-3xs font-mono uppercase text-text-muted">String Current</span>
+            <div className="font-mono font-bold text-lg text-gold">{current} <span className="text-2xs text-text-muted">A</span></div>
+            <div className="text-3xs font-mono text-text-dim">STC Max: 9.1 A</div>
+          </div>
+
+          <div className="p-3 rounded-xl border space-y-1"
+            style={{ background: 'rgba(6,10,20,0.8)', borderColor: 'rgba(255,255,255,0.06)' }}>
+            <span className="text-3xs font-mono uppercase text-text-muted flex items-center gap-1">
+              <Zap size={11} className="text-jade" /> Active Power
+            </span>
+            <div className="font-mono font-bold text-lg text-jade">{powerW} <span className="text-2xs text-text-muted">W</span></div>
+            <div className="text-3xs font-mono text-text-dim">Rated: 375 W Mono</div>
+          </div>
+
+          <div className="p-3 rounded-xl border space-y-1"
+            style={{ background: 'rgba(6,10,20,0.8)', borderColor: 'rgba(255,255,255,0.06)' }}>
+            <span className="text-3xs font-mono uppercase text-text-muted flex items-center gap-1">
+              <Thermometer size={11} className="text-gold" /> Cell Temp
+            </span>
+            <div className="font-mono font-bold text-lg text-text-primary">{tempC} <span className="text-2xs text-text-muted">°C</span></div>
+            <div className="text-3xs font-mono text-text-dim">NOCT Benchmark</div>
+          </div>
+        </div>
+
+        {/* Fault Simulation Action Controls for Evaluators */}
+        <div className="pt-2 border-t border-white/[0.08] space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-2xs font-mono uppercase tracking-wider text-text-muted flex items-center gap-1.5">
+              <AlertTriangle size={12} className="text-gold" /> SCADA Test Controls
+            </span>
+            <span className="text-3xs font-mono text-text-dim">Hardware Fault Injection</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            {!isFault ? (
+              <button
+                onClick={() => {
+                  onSetFault('Offline');
+                  toast.warn(`Module A-${panelId} Diode Fault Injected — Auto-isolated in <12ms`);
+                }}
+                className="px-3 py-2 rounded-xl text-2xs font-mono font-bold border transition-all text-crimson hover:bg-crimson/15 active:scale-95 flex items-center justify-center gap-1.5"
+                style={{ background: 'rgba(229,72,77,0.1)', borderColor: 'rgba(229,72,77,0.3)' }}
+              >
+                <AlertTriangle size={12} />
+                <span>Inject Fault</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  onSetFault(null);
+                  toast.success(`Module A-${panelId} cleared — 100% conductance restored`);
+                }}
+                className="px-3 py-2 rounded-xl text-2xs font-mono font-bold border transition-all text-jade hover:bg-jade/15 active:scale-95 flex items-center justify-center gap-1.5"
+                style={{ background: 'rgba(45,212,168,0.1)', borderColor: 'rgba(45,212,168,0.3)' }}
+              >
+                <CheckCircle2 size={12} />
+                <span>Clear Fault</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => {
+                onClose();
+                onViewIn3D?.();
+                toast.info(`Inspecting Module A-${panelId} in 3D Solar Twin`);
+              }}
+              className="px-3 py-2 rounded-xl text-2xs font-mono font-bold border transition-all text-cyan hover:bg-cyan/15 active:scale-95 flex items-center justify-center gap-1.5"
+              style={{ background: 'rgba(77,208,225,0.1)', borderColor: 'rgba(77,208,225,0.3)' }}
+            >
+              <Box size={12} />
+              <span>Inspect in 3D</span>
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 // ── MAIN DASHBOARD ────────────────────────────────────────────────────────────
 const Dashboard = ({
   hourlyData = [],
@@ -221,12 +386,15 @@ const Dashboard = ({
   onSelectHour,
   faultedPanels = {},
   onSelectPanel,
+  onSetPanelFault,
+  onNavigateTab,
   location = DEFAULT_LOCATION,
   demoMode = false,
   tourStep = null,
   onTourNext,
   onTourSkip,
 }) => {
+  const [inspectPanelId, setInspectPanelId] = useState(null);
   const currentHourData = hourlyData[currentHour] || {};
   const metrics = getFinancialMetrics(hourlyData, currentHour);
   const [demoHour, setDemoHour] = useState(currentHour);
@@ -546,7 +714,13 @@ const Dashboard = ({
                   {32 - Object.keys(faultedPanels).length}/32 Online · 98.4% Net Yield Factor
                 </span>
               </div>
-              <span className="badge-gold">Click to Inspect</span>
+              <button
+                onClick={() => setInspectPanelId(inspectPanelId || 14)}
+                className="badge-gold hover:bg-gold/25 transition-all cursor-pointer active:scale-95"
+                title="Open live telemetry inspector"
+              >
+                Click to Inspect
+              </button>
             </div>
             <div className="grid grid-cols-8 gap-2">
               {Array.from({ length: 32 }, (_, idx) => {
@@ -561,10 +735,13 @@ const Dashboard = ({
                   <motion.div key={id}
                     whileHover={{ scale: 1.10, transition: { duration: 0.15 } }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => onSelectPanel?.(id)}
-                    className="h-10 rounded-lg flex items-center justify-center cursor-pointer"
+                    onClick={() => {
+                      setInspectPanelId(id);
+                      onSelectPanel?.(id);
+                    }}
+                    className="h-10 rounded-lg flex items-center justify-center cursor-pointer transition-shadow"
                     style={{ background: bg, border: `1px solid ${border}`, boxShadow: glow }}
-                    title={`Module A-${id}: ${fault || 'Nominal (100%)'}`}
+                    title={`Module A-${id}: ${fault || 'Nominal (100%)'} · Click to Inspect Telemetry`}
                   >
                     <span className="text-3xs font-mono font-bold" style={{ color: tc }}>{id}</span>
                   </motion.div>
@@ -582,12 +759,28 @@ const Dashboard = ({
                   </span>
                 ))}
               </div>
-              <span className="text-3xs text-text-dim font-mono">Click module → open telemetry inspector</span>
+              <span className="text-3xs text-text-dim font-mono">Click any module cell to open hardware telemetry inspector</span>
             </div>
           </div>
         </div>
 
       </motion.div>
+
+      {/* ── Live Module Telemetry Inspector Modal ── */}
+      <AnimatePresence>
+        {inspectPanelId !== null && (
+          <ModuleInspectorModal
+            panelId={inspectPanelId}
+            fault={faultedPanels[inspectPanelId]}
+            onClose={() => setInspectPanelId(null)}
+            onSetFault={(type) => onSetPanelFault?.(inspectPanelId, type)}
+            onViewIn3D={() => {
+              onSelectPanel?.(inspectPanelId);
+              onNavigateTab?.('3d');
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
