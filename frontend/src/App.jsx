@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Sun, Box, LayoutGrid, BarChart2, Clock, HelpCircle, LayoutDashboard, MapPin, Building2, Flame, Play, Square, Maximize2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
+import { Sun, Box, LayoutGrid, BarChart2, Clock, HelpCircle, LayoutDashboard, MapPin, Building2, Flame, Play, Square, Maximize2, Radio } from 'lucide-react';
 import {
   generate24HourForecast,
   calculatePanelOutputs,
@@ -14,16 +14,20 @@ import FeatureImportance from './components/dashboard/FeatureImportance';
 import CostEstimate from './components/dashboard/CostEstimate';
 import HistorianView from './components/dashboard/HistorianView';
 
-import Solar3DScene from './components/3d/Solar3DScene';
 import SceneControls from './components/3d/SceneControls';
+import Scada3DLoader from './components/3d/Scada3DLoader';
 import OnboardingModal from './components/onboarding/OnboardingModal';
 import SplashScreen from './components/onboarding/SplashScreen';
+import ErrorBoundary from './components/ui/ErrorBoundary';
 import { ToastProvider, toast } from './components/ui/Toast';
 import EnergyComputePanel from './components/dashboard/EnergyComputePanel';
 import LocationModal from './components/dashboard/LocationModal';
-import ControlRoomInterior3D from './components/3d/ControlRoomInterior3D';
 import { fetchLiveIrradiance, fetch24HourMeteoForecast, DEFAULT_LOCATION } from './api/energyEngine';
-import { streamTelemetryToCloud, streamEventToCloud } from './api/cloudScadaDatabase';
+import { dispatchTelemetry, dispatchScadaEvent, getDataLayerStatus } from './services/dataLayer';
+
+// Lazy load heavy Three.js 3D scenes for sub-second initial load performance
+const Solar3DScene = lazy(() => import('./components/3d/Solar3DScene'));
+const ControlRoomInterior3D = lazy(() => import('./components/3d/ControlRoomInterior3D'));
 
 function getCityLocalTime(location) {
   try {
@@ -61,14 +65,48 @@ export default function App() {
     }
   }, []);
 
+  // Sync window.location.hash with activeTab for robust routing & zero broken links
+  useEffect(() => {
+    const handleHashSync = () => {
+      const raw = (window.location.hash || '').replace(/^#\/?/, '').toLowerCase();
+      if (['3d', 'twin'].includes(raw)) setActiveTab('3d');
+      else if (['2d', 'forecast'].includes(raw)) setActiveTab('2d');
+      else if (['firebase', 'cloud', 'sync'].includes(raw)) setActiveTab('firebase');
+      else if (raw === 'split') setActiveTab('split');
+      else if (['control-room', 'controlroom'].includes(raw)) setShowControlRoomModal(true);
+      else if (raw === 'dashboard' || !raw) setActiveTab('dashboard');
+      else {
+        // Unknown route: safely fallback to dashboard
+        setActiveTab('dashboard');
+      }
+    };
+
+    handleHashSync();
+    window.addEventListener('hashchange', handleHashSync);
+    return () => window.removeEventListener('hashchange', handleHashSync);
+  }, []);
+
+  const handleTabChange = useCallback((newTab) => {
+    setActiveTab(newTab);
+    try {
+      window.location.hash = `#${newTab}`;
+    } catch {}
+  }, []);
+
+  const [dataLayerStatus, setDataLayerStatus] = useState(getDataLayerStatus);
+  useEffect(() => {
+    const timer = setInterval(() => setDataLayerStatus(getDataLayerStatus()), 3000);
+    return () => clearInterval(timer);
+  }, []);
+
   const handleToggleDemo = useCallback(() => {
     setDemoMode(prev => !prev);
   }, []);
 
   const handleStartDashTour = useCallback(() => {
-    setActiveTab('dashboard');
+    handleTabChange('dashboard');
     setDashTourStep(0);
-  }, []);
+  }, [handleTabChange]);
 
 
   // Fetch Open-Meteo weather whenever location changes
@@ -240,10 +278,10 @@ export default function App() {
     return calculatePanelOutputs(currentHourData.predictedKW, faultedPanels);
   }, [currentHourData.predictedKW, faultedPanels]);
 
-  // Continuously stream live telemetry to Cloud Database (0 Bytes on local Mac disk)
+  // Continuously stream live telemetry to Cloud Database & Data Layer (0 Bytes on local Mac disk)
   useEffect(() => {
     if (currentHourData && currentHourData.predictedKW !== undefined) {
-      streamTelemetryToCloud({
+      dispatchTelemetry({
         hour: hourOfDay,
         timeLabel: currentHourData.timeLabel,
         location,
@@ -266,9 +304,9 @@ export default function App() {
   }, []);
 
   const handleStartTour = useCallback(() => {
-    setActiveTab('3d');
+    handleTabChange('3d');
     setTourStep(0);
-  }, []);
+  }, [handleTabChange]);
 
   const handleNextTourStep = useCallback(() => {
     setTourStep(prev => (prev < 5 ? prev + 1 : null));
@@ -284,7 +322,7 @@ export default function App() {
 
   const handleInjectCloud = useCallback(() => {
     setCloudInjection({ startedAt: Date.now(), durationMs: 30000 });
-    streamEventToCloud({
+    dispatchScadaEvent({
       type: 'WEATHER_INJECTION',
       title: 'Transient Cloud Shadow Injected via SCADA Simulation',
       description: 'Simulated 30-second localized atmospheric occlusion. Array irradiance reduced by 50%. Stored in Cloud.',
@@ -297,7 +335,7 @@ export default function App() {
 
   const handleClearCloud = useCallback(() => {
     setCloudInjection(null);
-    streamEventToCloud({
+    dispatchScadaEvent({
       type: 'WEATHER_CLEARED',
       title: 'Cloud Dissipation - Irradiance Baseline Restored',
       description: 'Cloud attenuation factor cleared. Array returned to clear-sky MPPT curve. Stored in Cloud.',
@@ -313,7 +351,7 @@ export default function App() {
       const next = { ...prev };
       if (!faultType) {
         delete next[panelId];
-        streamEventToCloud({
+        dispatchScadaEvent({
           type: 'FAULT_CLEARED',
           title: `Module A-${panelId} Fault Cleared`,
           description: `String optimizer telemetry returned to nominal status. Normal string conductance restored.`,
@@ -323,7 +361,7 @@ export default function App() {
         });
       } else {
         next[panelId] = faultType;
-        streamEventToCloud({
+        dispatchScadaEvent({
           type: 'FAULT_INJECTED',
           title: `Module A-${panelId} State Changed: ${faultType}`,
           description: `Diagnostic sensor triggered ${faultType} fault condition on String A, Unit ${panelId}.`,
@@ -337,29 +375,31 @@ export default function App() {
   }, []);
 
   const Scene = (
-    <Solar3DScene
-      hourOfDay={currentFractionalHour}
-      panelDataList={panelDataList}
-      selectedPanel={selectedPanel}
-      onSelectPanel={handleSelectPanel}
-      currentKW={currentHourData.predictedKW}
-      tourStep={tourStep}
-      onNextTourStep={handleNextTourStep}
-      onPrevTourStep={handlePrevTourStep}
-      onEndTour={handleEndTour}
-      activeFormulaHighlight={activeFormulaHighlight}
-      onFormulaHover={setActiveFormulaHighlight}
-      panelTiltDeg={panelTiltDeg}
-      cloudShadowFactor={cloudShadowFactor}
-      faultedPanels={faultedPanels}
-      onSetPanelFault={handleSetPanelFault}
-      trackingMode={trackingMode}
-      fixedKW={currentHourData.fixedKW}
-      trackedKW={currentHourData.trackedKW}
-      gainPct={currentHourData.gainPct}
-      meteoData={meteoData}
-      onOpenControlRoom={() => setShowControlRoomModal(true)}
-    />
+    <Suspense fallback={<Scada3DLoader text="Compiling 3D Solar Twin PBR Shaders..." />}>
+      <Solar3DScene
+        hourOfDay={currentFractionalHour}
+        panelDataList={panelDataList}
+        selectedPanel={selectedPanel}
+        onSelectPanel={handleSelectPanel}
+        currentKW={currentHourData.predictedKW}
+        tourStep={tourStep}
+        onNextTourStep={handleNextTourStep}
+        onPrevTourStep={handlePrevTourStep}
+        onEndTour={handleEndTour}
+        activeFormulaHighlight={activeFormulaHighlight}
+        onFormulaHover={setActiveFormulaHighlight}
+        panelTiltDeg={panelTiltDeg}
+        cloudShadowFactor={cloudShadowFactor}
+        faultedPanels={faultedPanels}
+        onSetPanelFault={handleSetPanelFault}
+        trackingMode={trackingMode}
+        fixedKW={currentHourData.fixedKW}
+        trackedKW={currentHourData.trackedKW}
+        gainPct={currentHourData.gainPct}
+        meteoData={meteoData}
+        onOpenControlRoom={() => setShowControlRoomModal(true)}
+      />
+    </Suspense>
   );
 
   const Controls = (
@@ -402,13 +442,21 @@ export default function App() {
         onSelectLocation={handleSelectLocation}
       />
 
-      <ControlRoomInterior3D
-        isOpen={showControlRoomModal}
-        onClose={() => setShowControlRoomModal(false)}
-        currentKW={currentHourData.predictedKW}
-        irradiance={currentHourData.irradiance}
-        location={location}
-      />
+      {showControlRoomModal && (
+        <Suspense fallback={
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-2xl">
+            <Scada3DLoader text="Entering NASA/SCADA Mission Control Deck..." />
+          </div>
+        }>
+          <ControlRoomInterior3D
+            isOpen={showControlRoomModal}
+            onClose={() => setShowControlRoomModal(false)}
+            currentKW={currentHourData.predictedKW}
+            irradiance={currentHourData.irradiance}
+            location={location}
+          />
+        </Suspense>
+      )}
 
       {/* ── Premium Floating Glass Header ─────────────────────────────────── */}
       <header className="sticky top-0 z-50 glass-premium shadow-[0_4px_32px_rgba(0,0,0,0.8)]" style={{ position: 'relative' }}>
@@ -511,6 +559,17 @@ export default function App() {
               ))}
             </div>
 
+            {/* Data Layer Telemetry Status Chip */}
+            <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-3xs font-mono border"
+              style={{
+                background: dataLayerStatus.isDemoFallbackActive ? 'rgba(201,151,62,0.12)' : 'rgba(45,212,168,0.10)',
+                borderColor: dataLayerStatus.isDemoFallbackActive ? 'rgba(201,151,62,0.28)' : 'rgba(45,212,168,0.25)',
+                color: dataLayerStatus.isDemoFallbackActive ? '#c9973e' : '#2dd4a8'
+              }}>
+              <Radio size={11} className="animate-pulse" />
+              <span>{dataLayerStatus.statusText}</span>
+            </div>
+
             {/* View tabs */}
             <div className="flex items-center p-1 rounded-xl gap-0.5 bg-carbon border border-white/[0.06]">
               {[
@@ -520,7 +579,7 @@ export default function App() {
                 ['firebase', Flame, 'Firebase'],
                 ['split', LayoutGrid, 'Split'],
               ].map(([key, Icon, label]) => (
-                <button key={key} onClick={() => setActiveTab(key)}
+                <button key={key} onClick={() => handleTabChange(key)}
                   className="px-2.5 py-1.5 flex items-center gap-1.5 rounded-lg text-xs font-semibold transition-all"
                   style={activeTab === key
                     ? { color: '#c9973e', background: 'rgba(201,151,62,0.18)', boxShadow: '0 0 12px rgba(201,151,62,0.15)' }
@@ -593,7 +652,7 @@ export default function App() {
             onSelectHour={h => {
               setIsLiveClock(false);
               setHourOfDay(h);
-              setActiveTab('dashboard');
+              handleTabChange('dashboard');
             }}
           />
         )}

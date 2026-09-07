@@ -220,7 +220,6 @@ async function seedHistoricalDataIfEmpty() {
 
     countReq.onsuccess = () => {
       if (countReq.result === 0) {
-        console.log('[HELIOS DB] Seeding initial 24-hour SCADA time-series telemetry...');
         const now = Date.now();
         const hourMs = 3600000;
 

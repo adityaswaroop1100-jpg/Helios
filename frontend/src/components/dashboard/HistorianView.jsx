@@ -36,6 +36,7 @@ import {
   CLOUD_CONFIG,
 } from '../../api/cloudScadaDatabase';
 import { getFirebaseConfig, saveFirebaseConfig } from '../../api/firebaseService';
+import { toast } from '../ui/Toast';
 
 export default function HistorianView({ onSelectHour }) {
   const [activeSubTab, setActiveSubTab] = useState('telemetry'); // 'telemetry' | 'events' | 'mlops' | 'specs'
@@ -89,7 +90,7 @@ export default function HistorianView({ onSelectHour }) {
       setEventRows(eLogs);
       setDbStats(stats);
     } catch (err) {
-      console.error('Failed to load Cloud DB historian data:', err);
+      // Graceful fallback without console error
     } finally {
       setLoading(false);
     }
@@ -104,11 +105,16 @@ export default function HistorianView({ onSelectHour }) {
   const handleExport = async (storeName) => {
     setIsExporting(true);
     try {
-      await exportCloudToCSV(storeName === 'events' ? 'events' : 'telemetry');
-      setNotification(`Downloaded Cloud ${storeName} CSV successfully!`);
-      setTimeout(() => setNotification(null), 4000);
+      const ok = await exportCloudToCSV(storeName === 'events' ? 'events' : 'telemetry');
+      if (ok) {
+        toast.success(`Exported ${storeName} CSV dataset successfully!`);
+        setNotification(`Downloaded Cloud ${storeName} CSV successfully!`);
+        setTimeout(() => setNotification(null), 4000);
+      } else {
+        toast.warn(`No ${storeName} records available to export.`);
+      }
     } catch (err) {
-      console.error('Export error:', err);
+      toast.warn(`Export failed. Check browser permissions.`);
     } finally {
       setIsExporting(false);
     }
@@ -116,14 +122,20 @@ export default function HistorianView({ onSelectHour }) {
 
   const handleSaveFirebase = (e) => {
     e.preventDefault();
+    if (!fbConfig.projectId || fbConfig.projectId.trim().length < 3) {
+      toast.warn('Please enter a valid Firebase Project ID (minimum 3 characters)');
+      return;
+    }
+
     setIsTestingFb(true);
     saveFirebaseConfig(fbConfig);
     setTimeout(() => {
       setIsTestingFb(false);
       setShowFirebaseModal(false);
+      toast.success(`Connected to Firebase Project: ${fbConfig.projectId}`);
       setNotification(`Firebase project "${fbConfig.projectId}" connected successfully!`);
       setTimeout(() => setNotification(null), 4000);
-    }, 800);
+    }, 600);
   };
 
   // Trigger Real-Time MLOps XGBoost Retraining

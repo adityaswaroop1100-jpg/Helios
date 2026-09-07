@@ -413,9 +413,10 @@ function MissionVideoWall({
         className="select-none pointer-events-auto"
       >
         <div
-          style={{ width: '1380px', height: '530px' }}
           className="rounded-2xl p-6 flex flex-col justify-between text-text-primary font-sans backdrop-blur-3xl overflow-hidden border shadow-2xl transition-all duration-500"
           style={{
+            width: '1380px',
+            height: '530px',
             background: isAlert
               ? 'linear-gradient(135deg, rgba(20,8,12,0.98), rgba(12,6,10,0.98))'
               : 'linear-gradient(135deg, rgba(6,10,20,0.98), rgba(8,14,28,0.98))',

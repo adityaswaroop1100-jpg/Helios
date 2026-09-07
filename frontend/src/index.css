@@ -31,27 +31,27 @@ body {
 
 /* 2. GLASS COMPONENTS */
 .glass-premium {
-  background: rgba(8, 14, 28, 0.72) !important;
+  background: rgba(8, 14, 28, 0.78) !important;
   backdrop-filter: blur(28px) saturate(160%) !important;
   -webkit-backdrop-filter: blur(28px) saturate(160%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.05) !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.09) !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.16) !important;
   box-shadow:
     0 24px 64px -16px rgba(0, 0, 0, 0.95),
-    0 0 0 0.5px rgba(255, 255, 255, 0.03),
-    inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
+    0 0 0 0.5px rgba(255, 255, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
   border-radius: 20px !important;
 }
 
 .glass-panel {
-  background: rgba(8, 14, 28, 0.72) !important;
+  background: rgba(8, 14, 28, 0.78) !important;
   backdrop-filter: blur(28px) saturate(160%) !important;
   -webkit-backdrop-filter: blur(28px) saturate(160%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.05) !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.09) !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.16) !important;
   box-shadow:
     0 24px 64px -16px rgba(0, 0, 0, 0.95),
-    inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
   border-radius: 20px !important;
 }
 

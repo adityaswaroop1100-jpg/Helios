@@ -24,8 +24,6 @@ export const CLOUD_CONFIG = {
 export async function initCloudDatabase() {
   if (isCloudInitialized) return true;
 
-  console.log('[HELIOS CLOUD DB] Connecting to Serverless Cloud Time-Series Store (Zero Local Disk Usage)...');
-
   // Seed baseline cloud records into in-memory stream buffer
   const now = Date.now();
   const hourMs = 3600000;
