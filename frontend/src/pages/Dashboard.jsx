@@ -41,7 +41,7 @@ const ACCENT = {
   crimson: { color: '#e5484d', bg: 'rgba(229,72,77,0.09)',   border: 'rgba(229,72,77,0.18)',   glow: 'rgba(229,72,77,0.10)' },
 };
 
-const KpiCard = ({ title, value, unit, icon: Icon, trend = 0, isPositive = true, accentColor = 'gold', delay = 0, demo = false }) => {
+const KpiCard = ({ title, value, unit, icon: Icon, trend = 0, isPositive = true, accentColor = 'gold', delay = 0, demo = false, pulse = false }) => {
   const a = ACCENT[accentColor] || ACCENT.gold;
   const numVal = parseFloat(String(value).replace(/[^0-9.]/g, ''));
   const decimals = String(value).includes('.') ? 1 : 0;
@@ -56,7 +56,7 @@ const KpiCard = ({ title, value, unit, icon: Icon, trend = 0, isPositive = true,
       className="col-span-12 sm:col-span-6 lg:col-span-3"
     >
       <div
-        className="relative h-full min-h-[158px] rounded-xl p-5 flex flex-col justify-between overflow-hidden cursor-default"
+        className={`relative h-full min-h-[158px] rounded-xl p-5 flex flex-col justify-between overflow-hidden cursor-default transition-shadow duration-700 ${pulse ? 'gentle-highlight-pulse' : ''}`}
         style={{
           background: 'linear-gradient(135deg, rgba(12,20,40,0.97) 0%, rgba(8,14,26,0.97) 100%)',
           border: `1px solid ${a.border}`,
@@ -81,7 +81,7 @@ const KpiCard = ({ title, value, unit, icon: Icon, trend = 0, isPositive = true,
           </div>
 
           <div className="flex items-baseline gap-2">
-            <span className="font-mono font-bold" style={{ fontSize: '2.2rem', lineHeight: 1, color: a.color }}>
+            <span className="font-mono font-bold kpi-value" style={{ fontSize: '2.2rem', lineHeight: 1, color: a.color }}>
               {demo ? <AnimatedNumber value={numVal} decimals={decimals} /> : value}
             </span>
             <span className="text-xs text-text-muted font-mono">{unit}</span>
@@ -399,8 +399,15 @@ const Dashboard = ({
   const metrics = getFinancialMetrics(hourlyData, currentHour);
   const [demoHour, setDemoHour] = useState(currentHour);
   const [demoOffset, setDemoOffset] = useState(0);
+  const [highlightPulse, setHighlightPulse] = useState(true);
   const demoIntervalRef = useRef(null);
   const toastIntervalRef = useRef(null);
+
+  // Gentle one-time highlight pulse on first load (2.2s soft gold glow)
+  useEffect(() => {
+    const timer = setTimeout(() => setHighlightPulse(false), 2200);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Auto-demo: cycle through hours + fluctuate KPIs
   useEffect(() => {
@@ -523,16 +530,16 @@ const Dashboard = ({
         {/* ── ROW 2: KPI Cards ── */}
         <div className="col-span-12" data-tour="kpi-row">
           <div className="grid grid-cols-12 gap-5">
-            <KpiCard title="Array Capacity"  value="48.0"              unit="kW"    icon={Sun}       accentColor="gold"   trend={0}    isPositive={true}  delay={0.05} demo={demoMode} />
-            <KpiCard title="Current Yield"   value={activePower}       unit="kW"    icon={Zap}       accentColor="gold"   trend={14.2} isPositive={true}  delay={0.10} demo={demoMode} />
-            <KpiCard title="Daily Energy"    value={m.totalDailyKWh || '93.1'} unit="kWh" icon={Battery}  accentColor="cyan"   trend={3.1}  isPositive={true}  delay={0.15} demo={demoMode} />
-            <KpiCard title="CO₂ Avoided"     value={m.co2AvoidedKg  || '65.8'} unit="kg"  icon={CloudRain} accentColor="jade"   trend={0}    isPositive={true}  delay={0.20} demo={demoMode} />
+            <KpiCard title="Array Capacity"  value="48.0"              unit="kW"    icon={Sun}       accentColor="gold"   trend={0}    isPositive={true}  delay={0.05} demo={demoMode} pulse={highlightPulse} />
+            <KpiCard title="Current Yield"   value={activePower}       unit="kW"    icon={Zap}       accentColor="gold"   trend={14.2} isPositive={true}  delay={0.10} demo={demoMode} pulse={highlightPulse} />
+            <KpiCard title="Daily Energy"    value={m.totalDailyKWh || '93.1'} unit="kWh" icon={Battery}  accentColor="cyan"   trend={3.1}  isPositive={true}  delay={0.15} demo={demoMode} pulse={highlightPulse} />
+            <KpiCard title="CO₂ Avoided"     value={m.co2AvoidedKg  || '65.8'} unit="kg"  icon={CloudRain} accentColor="jade"   trend={0}    isPositive={true}  delay={0.20} demo={demoMode} pulse={highlightPulse} />
           </div>
         </div>
 
         {/* ── ROW 3A: Main Chart (8 col) ── */}
         <div className="col-span-12 lg:col-span-8" data-tour="chart-row">
-          <div className="data-card rounded-xl2 p-5 h-[370px] flex flex-col">
+          <div className={`data-card rounded-xl2 p-5 h-[370px] flex flex-col transition-shadow duration-700 ${highlightPulse ? 'gentle-highlight-pulse' : ''}`}>
             <div className="flex items-center justify-between mb-2 pb-2"
               style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
               <div>

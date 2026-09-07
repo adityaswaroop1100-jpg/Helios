@@ -340,3 +340,26 @@ body {
   to { transform: rotate(360deg); }
 }
 .animate-spin-slow { animation: spin-slow 12s linear infinite; }
+
+/* 19. PROJECTOR READABILITY PATCH (ZERO LAYOUT SHIFT) */
+@media (min-width: 1920px) {
+  .kpi-value { font-size: 3.5rem !important; }
+  .glass-premium { padding: 1.75rem !important; }
+}
+
+/* 20. GENTLE HIGHLIGHT PULSE (SUBMISSION POLISH) */
+@keyframes gentleHighlightPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(201, 151, 62, 0);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(201, 151, 62, 0.2);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(201, 151, 62, 0);
+  }
+}
+
+.gentle-highlight-pulse {
+  animation: gentleHighlightPulse 2s ease-in-out 1 forwards;
+}

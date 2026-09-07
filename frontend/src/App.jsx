@@ -22,8 +22,15 @@ import ErrorBoundary from './components/ui/ErrorBoundary';
 import { ToastProvider, toast } from './components/ui/Toast';
 import EnergyComputePanel from './components/dashboard/EnergyComputePanel';
 import LocationModal from './components/dashboard/LocationModal';
+import ImpactRibbon from './components/ImpactRibbon';
 import { fetchLiveIrradiance, fetch24HourMeteoForecast, DEFAULT_LOCATION } from './api/energyEngine';
 import { dispatchTelemetry, dispatchScadaEvent, getDataLayerStatus } from './services/dataLayer';
+import {
+  pingFirebaseCircuitBreaker,
+  subscribeFirebaseStatus,
+  fetchLivePlantTelemetry,
+  fetchPlant24HourForecast,
+} from './services/dataService';
 
 // Lazy load heavy Three.js 3D scenes for sub-second initial load performance
 const Solar3DScene = lazy(() => import('./components/3d/Solar3DScene'));
@@ -109,11 +116,20 @@ export default function App() {
   }, [handleTabChange]);
 
 
-  // Fetch Open-Meteo weather whenever location changes
+  const [isFirebaseLive, setIsFirebaseLive] = useState(false);
+
+  // Silent 2-second circuit-breaker Firebase ping
+  useEffect(() => {
+    pingFirebaseCircuitBreaker().then(live => setIsFirebaseLive(live));
+    const unsub = subscribeFirebaseStatus(setIsFirebaseLive);
+    return () => unsub();
+  }, []);
+
+  // Fetch weather & forecast with silent circuit-breaker fallback to mock physics
   const loadMeteo = useCallback(async () => {
     const [liveData, forecastData] = await Promise.all([
-      fetchLiveIrradiance(location),
-      fetch24HourMeteoForecast(location),
+      fetchLivePlantTelemetry(location),
+      fetchPlant24HourForecast(location),
     ]);
     if (liveData) setMeteoData(liveData);
     if (forecastData && forecastData.hours) {
@@ -162,7 +178,7 @@ export default function App() {
   // Tour / formula highlights / onboarding
   const [tourStep, setTourStep] = useState(null);
   const [activeFormulaHighlight, setActiveFormulaHighlight] = useState(null);
-  const [showOnboarding, setShowOnboarding] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const [trackingMode, setTrackingMode] = useState('fixed');
   const [panelTiltDeg, setPanelTiltDeg] = useState(30);
@@ -498,6 +514,9 @@ export default function App() {
                     <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-jade" />
                   </span>
                   LIVE SCADA
+                  {isFirebaseLive && (
+                    <span className="inline-block text-[9px] leading-none ml-0.5" title="Firebase Firestore Cloud Connected">🟢</span>
+                  )}
                 </span>
               </div>
               <div className="text-2xs text-text-secondary font-medium hidden sm:flex items-center gap-2 mt-0.5">
@@ -617,6 +636,9 @@ export default function App() {
           </div>
         </div>
       </header>
+
+      {/* ── 60-Second Impact Ribbon (Dashboard Only) ── */}
+      {activeTab === 'dashboard' && <ImpactRibbon />}
 
       {/* ── Main content ─────────────────────────────────────────────────── */}
       <main className="max-w-7xl mx-auto px-5 lg:px-8 py-6 space-y-6 flex-1 w-full">
