@@ -1,116 +1,124 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { motion, AnimatePresence, useMotionValue, animate } from 'framer-motion';
 import {
   TrendingUp, TrendingDown, Zap, Sun, Battery,
-  CloudRain, Activity, ShieldCheck
+  CloudRain, Activity, ShieldCheck, Play, Square,
+  Maximize2, RotateCcw, Layers, BarChart2, AlertTriangle
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine
 } from 'recharts';
 import { getFinancialMetrics } from '../api/forecastApi';
 import { DEFAULT_LOCATION } from '../api/energyEngine';
+import { toast } from '../components/ui/Toast';
 
-// ── KPI Card ────────────────────────────────────────────────────────────────
-const KpiCard = ({ title, value, unit, icon: Icon, trend = 0, isPositive = true, accentColor = 'gold', delay = 0 }) => {
-  const accent = {
-    gold:   { color: '#c9973e', bg: 'rgba(201,151,62,0.08)', border: 'rgba(201,151,62,0.18)', glow: 'rgba(201,151,62,0.10)' },
-    cyan:   { color: '#4dd0e1', bg: 'rgba(77,208,225,0.08)',  border: 'rgba(77,208,225,0.15)',  glow: 'rgba(77,208,225,0.08)' },
-    jade:   { color: '#2dd4a8', bg: 'rgba(45,212,168,0.08)', border: 'rgba(45,212,168,0.15)', glow: 'rgba(45,212,168,0.08)' },
-    crimson:{ color: '#e5484d', bg: 'rgba(229,72,77,0.08)',   border: 'rgba(229,72,77,0.15)',   glow: 'rgba(229,72,77,0.08)' },
-  }[accentColor] || { color: '#c9973e', bg: 'rgba(201,151,62,0.08)', border: 'rgba(201,151,62,0.18)', glow: 'rgba(201,151,62,0.10)' };
+// ── Animated Counter ──────────────────────────────────────────────────────────
+function AnimatedNumber({ value, decimals = 1 }) {
+  const motionVal = useMotionValue(0);
+  const [display, setDisplay] = useState('0');
+
+  useEffect(() => {
+    const parsed = parseFloat(String(value).replace(/[^0-9.]/g, '')) || 0;
+    const ctrl = animate(motionVal, parsed, {
+      duration: 1.2,
+      ease: [0.22, 1, 0.36, 1],
+    });
+    const unsub = motionVal.on('change', v => {
+      setDisplay(decimals > 0 ? v.toFixed(decimals) : Math.round(v).toString());
+    });
+    return () => { ctrl.stop(); unsub(); };
+  }, [value, decimals, motionVal]);
+
+  return <span>{display}</span>;
+}
+
+// ── KPI Card ─────────────────────────────────────────────────────────────────
+const ACCENT = {
+  gold:    { color: '#c9973e', bg: 'rgba(201,151,62,0.09)', border: 'rgba(201,151,62,0.22)', glow: 'rgba(201,151,62,0.12)' },
+  cyan:    { color: '#4dd0e1', bg: 'rgba(77,208,225,0.09)',  border: 'rgba(77,208,225,0.18)',  glow: 'rgba(77,208,225,0.10)' },
+  jade:    { color: '#2dd4a8', bg: 'rgba(45,212,168,0.09)', border: 'rgba(45,212,168,0.18)', glow: 'rgba(45,212,168,0.10)' },
+  crimson: { color: '#e5484d', bg: 'rgba(229,72,77,0.09)',   border: 'rgba(229,72,77,0.18)',   glow: 'rgba(229,72,77,0.10)' },
+};
+
+const KpiCard = ({ title, value, unit, icon: Icon, trend = 0, isPositive = true, accentColor = 'gold', delay = 0, demo = false }) => {
+  const a = ACCENT[accentColor] || ACCENT.gold;
+  const numVal = parseFloat(String(value).replace(/[^0-9.]/g, ''));
+  const decimals = String(value).includes('.') ? 1 : 0;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      data-tour={`kpi-${accentColor}`}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.45, delay, ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ y: -3, transition: { duration: 0.2 } }}
+      transition={{ duration: 0.5, delay, ease: [0.22, 1, 0.36, 1] }}
+      whileHover={{ y: -4, transition: { duration: 0.18 } }}
       className="col-span-12 sm:col-span-6 lg:col-span-3"
     >
       <div
-        className="relative h-full min-h-[148px] rounded-xl2 p-5 flex flex-col justify-between overflow-hidden"
+        className="relative h-full min-h-[158px] rounded-xl p-5 flex flex-col justify-between overflow-hidden cursor-default"
         style={{
-          background: 'linear-gradient(135deg, rgba(12,20,40,0.95) 0%, rgba(8,14,26,0.95) 100%)',
-          border: `1px solid ${accent.border}`,
-          borderTop: `1px solid ${accent.border}`,
-          borderLeft: `3px solid ${accent.color}`,
-          boxShadow: `0 16px 48px -12px rgba(0,0,0,0.85), 0 0 28px -10px ${accent.glow}`,
+          background: 'linear-gradient(135deg, rgba(12,20,40,0.97) 0%, rgba(8,14,26,0.97) 100%)',
+          border: `1px solid ${a.border}`,
+          borderLeft: `3px solid ${a.color}`,
+          boxShadow: `0 20px 56px -12px rgba(0,0,0,0.9), 0 0 32px -12px ${a.glow}`,
         }}
       >
-        {/* Background glow */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{ background: `radial-gradient(ellipse at 20% 20%, ${accent.glow} 0%, transparent 65%)` }}
-        />
+        {/* Ambient radial glow */}
+        <div className="absolute inset-0 pointer-events-none"
+          style={{ background: `radial-gradient(ellipse at 15% 15%, ${a.glow} 0%, transparent 65%)` }} />
+        {/* Bottom accent line */}
+        <div className="absolute bottom-0 left-4 right-4 h-px"
+          style={{ background: `linear-gradient(90deg, transparent, ${a.color}40, transparent)` }} />
 
         <div className="relative">
           <div className="flex items-center justify-between mb-3">
             <span className="label-uppercase">{title}</span>
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: accent.bg, border: `1px solid ${accent.border}` }}>
-              <Icon size={13} style={{ color: accent.color }} />
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{ background: a.bg, border: `1px solid ${a.border}` }}>
+              <Icon size={14} style={{ color: a.color }} />
             </div>
           </div>
 
           <div className="flex items-baseline gap-2">
-            <span className="kpi-value text-3xl" style={{ color: accent.color }}>{value}</span>
-            <span className="text-2xs text-text-muted font-mono">{unit}</span>
+            <span className="font-mono font-bold" style={{ fontSize: '2.2rem', lineHeight: 1, color: a.color }}>
+              {demo ? <AnimatedNumber value={numVal} decimals={decimals} /> : value}
+            </span>
+            <span className="text-xs text-text-muted font-mono">{unit}</span>
           </div>
         </div>
 
-        <div className="relative flex items-center gap-2.5 text-2xs">
+        <div className="relative flex items-center gap-2 text-2xs">
           {trend !== 0 ? (
-            isPositive ? (
-              <span className="flex items-center gap-1 text-jade font-mono font-semibold">
-                <TrendingUp size={12} /> +{trend}%
-              </span>
-            ) : (
-              <span className="flex items-center gap-1 text-crimson font-mono font-semibold">
-                <TrendingDown size={12} /> {trend}%
-              </span>
-            )
-          ) : (
-            <span className="text-text-muted font-mono">Nominal</span>
-          )}
+            isPositive
+              ? <span className="flex items-center gap-1 font-mono font-semibold text-jade"><TrendingUp size={12} />+{trend}%</span>
+              : <span className="flex items-center gap-1 font-mono font-semibold text-crimson"><TrendingDown size={12} />{trend}%</span>
+          ) : <span className="text-text-muted font-mono">Nominal</span>}
           <span className="text-text-dim font-mono">vs STC rating</span>
         </div>
-
-        {/* Bottom accent line */}
-        <div className="absolute bottom-0 left-4 right-4 h-px"
-          style={{ background: `linear-gradient(90deg, transparent, ${accent.color}30, transparent)` }} />
       </div>
     </motion.div>
   );
 };
 
-// ── SVG Semicircle Gauge ─────────────────────────────────────────────────────
-function SemicircleGauge({ label, value, max, unit, color }) {
+// ── SVG Gauge ─────────────────────────────────────────────────────────────────
+function Gauge({ label, value, max, unit, color }) {
   const pct = Math.min(100, Math.max(0, (value / max) * 100));
-  const radius = 34;
-  const circumference = Math.PI * radius;
-  const strokeDashoffset = circumference - (pct / 100) * circumference;
-
+  const r = 32, circ = Math.PI * r;
   return (
     <div className="flex flex-col items-center">
-      <div className="label-uppercase mb-2">{label}</div>
-      <div className="relative w-[80px] h-[48px] overflow-hidden">
-        <svg className="absolute top-0 left-0 -rotate-180 w-[80px] h-[80px]" viewBox="0 0 80 80">
-          <circle cx="40" cy="40" r={radius} fill="transparent"
-            stroke="rgba(255,255,255,0.06)" strokeWidth="5"
-            strokeDasharray={circumference} strokeDashoffset={0}
-            strokeLinecap="round" />
-          <circle cx="40" cy="40" r={radius} fill="transparent"
-            stroke={color} strokeWidth="5"
-            strokeDasharray={circumference} strokeDashoffset={strokeDashoffset}
+      <div className="label-uppercase mb-2 text-center">{label}</div>
+      <div className="relative w-[74px] h-[44px] overflow-hidden">
+        <svg className="absolute top-0 left-0 -rotate-180 w-[74px] h-[74px]" viewBox="0 0 74 74">
+          <circle cx="37" cy="37" r={r} fill="transparent" stroke="rgba(255,255,255,0.06)" strokeWidth="5"
+            strokeDasharray={circ} strokeDashoffset={0} strokeLinecap="round" />
+          <circle cx="37" cy="37" r={r} fill="transparent" stroke={color} strokeWidth="5"
+            strokeDasharray={circ} strokeDashoffset={circ - (pct / 100) * circ}
             strokeLinecap="round"
-            style={{
-              transition: 'stroke-dashoffset 1.2s cubic-bezier(0.16, 1, 0.3, 1)',
-              filter: `drop-shadow(0 0 5px ${color}80)`,
-            }}
+            style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(0.16,1,0.3,1)', filter: `drop-shadow(0 0 5px ${color}80)` }}
           />
         </svg>
         <div className="absolute inset-0 flex items-end justify-center pb-0.5">
-          <span className="font-mono font-bold text-sm text-text-primary tabular-nums" style={{ lineHeight: 1 }}>{value}</span>
+          <span className="font-mono font-bold text-sm text-text-primary">{value}</span>
         </div>
       </div>
       <span className="text-3xs text-text-muted font-mono mt-1">{unit}</span>
@@ -118,35 +126,95 @@ function SemicircleGauge({ label, value, max, unit, color }) {
   );
 }
 
-// ── Custom Chart Tooltip ─────────────────────────────────────────────────────
-const CustomTooltip = ({ active, payload }) => {
-  if (active && payload && payload.length) {
-    const d = payload[0].payload;
-    return (
-      <div className="px-3 py-2.5 rounded-xl text-2xs space-y-1 min-w-[150px]"
-        style={{
-          background: 'rgba(6,10,20,0.97)',
-          border: '1px solid rgba(201,151,62,0.22)',
-          backdropFilter: 'blur(20px)',
-        }}>
-        <div className="font-mono text-text-primary font-semibold">{d.hour || d.timeLabel}</div>
-        <div className="flex justify-between gap-4">
-          <span className="text-text-secondary">Yield</span>
-          <span className="font-mono text-gold font-bold">{d.expected ?? d.predictedKW} kW</span>
-        </div>
-        {d.p90 !== undefined && (
-          <div className="flex justify-between gap-4">
-            <span className="text-text-muted">P90</span>
-            <span className="font-mono text-cyan">{d.p90} kW</span>
-          </div>
-        )}
-      </div>
-    );
-  }
-  return null;
+// ── Chart Tooltip ─────────────────────────────────────────────────────────────
+const ChartTooltip = ({ active, payload }) => {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  return (
+    <div className="px-3 py-2.5 rounded-xl text-2xs min-w-[150px]"
+      style={{ background: 'rgba(6,10,20,0.97)', border: '1px solid rgba(201,151,62,0.25)', backdropFilter: 'blur(20px)' }}>
+      <div className="font-mono font-semibold text-text-primary mb-1">{d.hour}</div>
+      <div className="flex justify-between gap-4"><span className="text-text-secondary">Yield</span><span className="font-mono text-gold font-bold">{d.expected} kW</span></div>
+      {d.p90 && <div className="flex justify-between gap-4"><span className="text-text-muted">P90</span><span className="font-mono text-cyan">{d.p90} kW</span></div>}
+    </div>
+  );
 };
 
-// ── Main Dashboard Component ─────────────────────────────────────────────────
+// ── Guided Tour Step Tooltip ──────────────────────────────────────────────────
+function TourTooltip({ step, total, onNext, onSkip }) {
+  const STEPS = [
+    { title: 'Real-Time KPI Dashboard', body: 'Live financial & carbon data: $17K/yr savings, 66.9T CO₂ avoided — updated every second.', target: 'kpi-row' },
+    { title: 'AI Forecast (99.89% R²)', body: 'XGBoost predicts 24-hour solar yield within P10–P90 confidence bounds. Sub-12ms response.', target: 'chart-row' },
+    { title: '32-Module String Heatmap', body: 'Click any cell to inspect voltage, temperature, and MPPT state of individual panels.', target: 'heatmap-row' },
+    { title: 'SCADA Anomaly Audit', body: 'Sub-12ms edge AI flags faults and dispatches BESS compensation automatically.', target: 'anomaly-row' },
+  ];
+  const s = STEPS[step] || STEPS[0];
+  return (
+    <motion.div
+      key={step}
+      initial={{ opacity: 0, y: 10, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.94 }}
+      className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[9990] max-w-sm w-full"
+    >
+      <div className="rounded-2xl p-5 shadow-premium"
+        style={{
+          background: 'rgba(6,10,20,0.97)',
+          border: '1px solid rgba(201,151,62,0.30)',
+          borderTop: '1px solid rgba(201,151,62,0.45)',
+          backdropFilter: 'blur(28px)',
+          boxShadow: '0 24px 64px rgba(0,0,0,0.95), 0 0 32px rgba(201,151,62,0.12)',
+        }}>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="badge-gold">{step + 1}/{total}</span>
+          <span className="font-bold text-sm text-text-primary">{s.title}</span>
+        </div>
+        <p className="text-2xs text-text-secondary font-mono leading-relaxed mb-4">{s.body}</p>
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1 flex-1">
+            {STEPS.map((_, i) => (
+              <div key={i} className="h-1 flex-1 rounded-full"
+                style={{ background: i <= step ? '#c9973e' : 'rgba(255,255,255,0.08)' }} />
+            ))}
+          </div>
+          <button onClick={onSkip} className="text-2xs text-text-muted hover:text-text-secondary font-mono transition-colors px-2">Skip</button>
+          <button onClick={onNext}
+            className="px-4 py-1.5 rounded-lg text-2xs font-mono font-bold transition-all"
+            style={{ background: 'rgba(201,151,62,0.15)', color: '#c9973e', border: '1px solid rgba(201,151,62,0.30)' }}>
+            {step < total - 1 ? 'Next →' : 'Finish ✓'}
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Skeleton Loader ───────────────────────────────────────────────────────────
+function Skeleton({ className = '' }) {
+  return (
+    <div className={`rounded-xl overflow-hidden ${className}`}
+      style={{ background: 'rgba(255,255,255,0.04)' }}>
+      <motion.div
+        className="h-full w-full"
+        style={{ background: 'linear-gradient(90deg, transparent 0%, rgba(201,151,62,0.06) 50%, transparent 100%)' }}
+        animate={{ x: ['-100%', '200%'] }}
+        transition={{ duration: 1.8, repeat: Infinity, ease: 'linear' }}
+      />
+    </div>
+  );
+}
+
+// ── Demo Mode Toast Intervals ─────────────────────────────────────────────────
+const DEMO_MESSAGES = [
+  '⚡ String #3 voltage anomaly detected — Auto-isolated in 9ms',
+  '☁️ Simulated cloud pass — BESS dispatching 8.2 kW compensation',
+  '🔄 MPPT re-locked to 641V after transient — Yield restored',
+  '📊 XGBoost model: P90 confidence maintained — 99.89% R²',
+  '🌡️ Cell temperature derate applied — NOCT model active',
+  '✅ Grid synchronization nominal — 49.98 Hz · Zero droop',
+];
+
+// ── MAIN DASHBOARD ────────────────────────────────────────────────────────────
 const Dashboard = ({
   hourlyData = [],
   currentHour = 12,
@@ -154,69 +222,122 @@ const Dashboard = ({
   faultedPanels = {},
   onSelectPanel,
   location = DEFAULT_LOCATION,
+  demoMode = false,
+  tourStep = null,
+  onTourNext,
+  onTourSkip,
 }) => {
   const currentHourData = hourlyData[currentHour] || {};
   const metrics = getFinancialMetrics(hourlyData, currentHour);
+  const [demoHour, setDemoHour] = useState(currentHour);
+  const [demoOffset, setDemoOffset] = useState(0);
+  const demoIntervalRef = useRef(null);
+  const toastIntervalRef = useRef(null);
 
+  // Auto-demo: cycle through hours + fluctuate KPIs
+  useEffect(() => {
+    if (demoMode) {
+      demoIntervalRef.current = setInterval(() => {
+        setDemoHour(h => (h + 1) % 24);
+        setDemoOffset(o => (Math.random() - 0.5) * 1.5);
+      }, 3000);
+      // Toast every 12s
+      let msgIdx = 0;
+      toastIntervalRef.current = setInterval(() => {
+        toast.scada(DEMO_MESSAGES[msgIdx % DEMO_MESSAGES.length], { duration: 5000 });
+        msgIdx++;
+      }, 12000);
+      // Initial toast
+      setTimeout(() => toast.success('🚀 Auto-Demo mode activated — HELIOS ORION 1.0', { duration: 4000 }), 300);
+    } else {
+      clearInterval(demoIntervalRef.current);
+      clearInterval(toastIntervalRef.current);
+      setDemoHour(currentHour);
+      setDemoOffset(0);
+    }
+    return () => {
+      clearInterval(demoIntervalRef.current);
+      clearInterval(toastIntervalRef.current);
+    };
+  }, [demoMode, currentHour]);
+
+  const activeHour  = demoMode ? demoHour : currentHour;
+  const activeData  = hourlyData[activeHour] || currentHourData;
+  const activePower = Math.max(0, (activeData.predictedKW || 0) + demoOffset).toFixed(2);
+  const m           = getFinancialMetrics(hourlyData, activeHour);
+
+  // Chart data
   const chartData = hourlyData.length > 0
     ? hourlyData.map(d => ({
         hour: d.timeLabel,
         expected: d.predictedKW,
         p90: d.p90UpperKW || +(d.predictedKW * 1.15).toFixed(1),
-        ambientTemp: d.ambientTemp,
       }))
     : Array.from({ length: 24 }, (_, i) => ({
-        hour: `${i % 12 || 12}${i < 12 ? 'AM' : 'PM'}`,
-        expected: +(3 + Math.sin((i - 6) * 0.5) * 3 + 2).toFixed(1),
-        p90: +(4.5 + Math.sin((i - 6) * 0.5) * 2.5 + 1.5).toFixed(1),
+        hour: `${String(i).padStart(2, '0')}:00`,
+        expected: +(Math.max(0, Math.sin((i - 6) * 0.38) * 24 + 2)).toFixed(1),
+        p90: +(Math.max(0, Math.sin((i - 6) * 0.38) * 28 + 3)).toFixed(1),
       }));
 
   const featureImportance = [
-    { label: 'Solar Zenith Angle (θz)', value: 49.2 },
-    { label: 'Global Irradiance (GHI)', value: 46.1 },
-    { label: 'NOCT Cell Temp (Tcell)',  value: 2.4 },
-    { label: 'Ambient Air Temp',        value: 1.2 },
-    { label: 'Cloud Cover Index',       value: 1.1 },
+    { label: 'Solar Zenith Angle (θz)', value: 49.2, color: '#c9973e' },
+    { label: 'Global Irradiance (GHI)', value: 46.1, color: '#4dd0e1' },
+    { label: 'NOCT Cell Temp (Tcell)',  value: 2.4,  color: '#2dd4a8' },
+    { label: 'Ambient Air Temp',        value: 1.2,  color: '#a78bfa' },
+    { label: 'Cloud Cover Index',       value: 1.1,  color: '#e5484d' },
   ];
 
   const anomalies = [
-    { time: '14:32:21', string: 'String #3', issue: 'Diode bypass fault isolated',       severity: 'CRITICAL' },
-    { time: '13:15:09', string: 'String #7', issue: 'Voltage drop >5% — derated',        severity: 'WARNING'  },
-    { time: '12:44:03', string: 'String #1', issue: 'Cloud transient — compensated',     severity: 'INFO'     },
+    { time: '14:32:21', string: 'String #3', issue: 'Bypass diode fault — auto-isolated in 9ms',     severity: 'CRITICAL' },
+    { time: '13:15:09', string: 'String #7', issue: 'Voltage drop >5% — MPPT derated',              severity: 'WARNING'  },
+    { time: '12:44:03', string: 'String #1', issue: 'Cloud transient — BESS compensation dispatched','severity': 'INFO'   },
   ];
 
-  const severityStyle = (s) => {
-    if (s === 'CRITICAL') return { color: '#e5484d', bg: 'rgba(229,72,77,0.12)', border: 'rgba(229,72,77,0.25)' };
-    if (s === 'WARNING')  return { color: '#c9973e', bg: 'rgba(201,151,62,0.12)', border: 'rgba(201,151,62,0.25)' };
-    return { color: '#4dd0e1', bg: 'rgba(77,208,225,0.10)', border: 'rgba(77,208,225,0.20)' };
+  const sevStyle = (s) => {
+    if (s === 'CRITICAL') return { c: '#e5484d', bg: 'rgba(229,72,77,0.10)', b: 'rgba(229,72,77,0.22)' };
+    if (s === 'WARNING')  return { c: '#c9973e', bg: 'rgba(201,151,62,0.10)', b: 'rgba(201,151,62,0.22)' };
+    return { c: '#4dd0e1', bg: 'rgba(77,208,225,0.08)', b: 'rgba(77,208,225,0.18)' };
   };
 
-  const kpis = [
-    { title: 'Array Capacity',  value: '48.0',                              unit: 'kW',  icon: Sun,      accentColor: 'gold',   trend: 0,    isPositive: true,  delay: 0.05 },
-    { title: 'Current Power',   value: metrics.currentKW     || '8.37',    unit: 'kW',  icon: Zap,      accentColor: 'gold',   trend: 14.2, isPositive: true,  delay: 0.10 },
-    { title: 'Daily Energy',    value: metrics.totalDailyKWh || '93.1',    unit: 'kWh', icon: Battery,  accentColor: 'cyan',   trend: 3.1,  isPositive: true,  delay: 0.15 },
-    { title: 'CO₂ Avoided',     value: metrics.co2AvoidedKg  || '65.8',    unit: 'kg',  icon: CloudRain,accentColor: 'jade',   trend: 0.8,  isPositive: true,  delay: 0.20 },
-  ];
+  const TOUR_TOTAL = 4;
 
   return (
-    <div className="animate-fadeIn">
+    <div className="animate-fadeIn relative">
+      {/* ── Guided Tour Overlay ── */}
+      <AnimatePresence>
+        {tourStep !== null && tourStep < TOUR_TOTAL && (
+          <TourTooltip step={tourStep} total={TOUR_TOTAL} onNext={onTourNext} onSkip={onTourSkip} />
+        )}
+      </AnimatePresence>
+
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4 }}
         className="grid grid-cols-12 gap-5 auto-rows-min"
       >
-        {/* ── ROW 1: Header ── */}
+        {/* ── ROW 1: Page Header ── */}
         <div className="col-span-12">
-          <div className="flex items-center justify-between pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+          <div className="flex items-center justify-between pb-4"
+            style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
             <div>
-              <h1 className="text-xl font-bold text-text-primary tracking-tight mb-0.5">SCADA Overview</h1>
+              <h1 className="text-xl font-bold text-text-primary tracking-tight mb-0.5">SCADA Control Overview</h1>
               <p className="text-2xs text-text-muted font-mono">
-                {location.name} Utility Farm &nbsp;·&nbsp; {location.latitude}°N, {location.longitude}°E &nbsp;·&nbsp;
-                <span className="text-jade font-semibold">IEC 61724 Compliant</span>
+                {location.name} · {location.latitude}°N, {location.longitude}°E ·&nbsp;
+                <span className="text-jade font-semibold">IEC 61724 · IEEE 1547</span>
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              {demoMode && (
+                <motion.div
+                  animate={{ opacity: [1, 0.5, 1] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl"
+                  style={{ background: 'rgba(229,72,77,0.12)', border: '1px solid rgba(229,72,77,0.25)' }}>
+                  <span className="w-2 h-2 rounded-full bg-crimson" />
+                  <span className="font-mono font-bold text-2xs text-crimson tracking-wider">AUTO-DEMO</span>
+                </motion.div>
+              )}
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl"
                 style={{ background: 'rgba(45,212,168,0.08)', border: '1px solid rgba(45,212,168,0.18)' }}>
                 <span className="relative flex h-2 w-2">
@@ -225,61 +346,68 @@ const Dashboard = ({
                 </span>
                 <span className="text-jade font-mono font-bold text-2xs tracking-wider">LIVE SCADA</span>
               </div>
-              <span className="text-3xs text-text-dim font-mono tracking-wider hidden sm:block">IEEE 1547</span>
             </div>
           </div>
         </div>
 
         {/* ── ROW 2: KPI Cards ── */}
-        {kpis.map((kpi) => <KpiCard key={kpi.title} {...kpi} />)}
+        <div className="col-span-12" data-tour="kpi-row">
+          <div className="grid grid-cols-12 gap-5">
+            <KpiCard title="Array Capacity"  value="48.0"              unit="kW"    icon={Sun}       accentColor="gold"   trend={0}    isPositive={true}  delay={0.05} demo={demoMode} />
+            <KpiCard title="Current Yield"   value={activePower}       unit="kW"    icon={Zap}       accentColor="gold"   trend={14.2} isPositive={true}  delay={0.10} demo={demoMode} />
+            <KpiCard title="Daily Energy"    value={m.totalDailyKWh || '93.1'} unit="kWh" icon={Battery}  accentColor="cyan"   trend={3.1}  isPositive={true}  delay={0.15} demo={demoMode} />
+            <KpiCard title="CO₂ Avoided"     value={m.co2AvoidedKg  || '65.8'} unit="kg"  icon={CloudRain} accentColor="jade"   trend={0}    isPositive={true}  delay={0.20} demo={demoMode} />
+          </div>
+        </div>
 
         {/* ── ROW 3A: Main Chart (8 col) ── */}
-        <div className="col-span-12 lg:col-span-8 h-[380px]">
-          <div className="data-card rounded-xl2 p-5 h-full flex flex-col">
-            <div className="flex items-center justify-between mb-2 pb-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="col-span-12 lg:col-span-8" data-tour="chart-row">
+          <div className="data-card rounded-xl2 p-5 h-[370px] flex flex-col">
+            <div className="flex items-center justify-between mb-2 pb-2"
+              style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
               <div>
                 <div className="label-uppercase mb-1">24-Hour Generation Curve</div>
-                <span className="text-jade font-mono font-semibold text-2xs">R² 0.9989 · XGBoost P90 Band</span>
+                <span className="text-jade font-mono font-semibold text-2xs">XGBoost · R² 0.9989 · P90 Confidence Band</span>
               </div>
               <div className="flex gap-2">
-                <span className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-3xs font-mono font-semibold"
-                  style={{ background: 'rgba(201,151,62,0.10)', border: '1px solid rgba(201,151,62,0.20)', color: '#c9973e' }}>
-                  <span className="w-1.5 h-1.5 rounded-full bg-gold" /> Yield kW
-                </span>
-                <span className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-3xs font-mono font-semibold"
-                  style={{ background: 'rgba(77,208,225,0.10)', border: '1px solid rgba(77,208,225,0.20)', color: '#4dd0e1' }}>
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan" /> P90
-                </span>
+                {[['Yield kW', '#c9973e', 'rgba(201,151,62,0.10)', 'rgba(201,151,62,0.22)'],
+                  ['P90 Band', '#4dd0e1', 'rgba(77,208,225,0.10)', 'rgba(77,208,225,0.22)']].map(([lbl, clr, bg, bd]) => (
+                  <span key={lbl} className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-3xs font-mono font-semibold"
+                    style={{ background: bg, border: `1px solid ${bd}`, color: clr }}>
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: clr }} />{lbl}
+                  </span>
+                ))}
               </div>
             </div>
             <div className="flex-1 min-h-0">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart
-                  data={chartData}
-                  margin={{ top: 8, right: 10, left: -16, bottom: 0 }}
-                  onClick={(e) => e?.activePayload?.length && onSelectHour?.(e.activeTooltipIndex)}
-                >
+                <AreaChart data={chartData} margin={{ top: 8, right: 10, left: -16, bottom: 0 }}
+                  onClick={e => e?.activePayload?.length && onSelectHour?.(e.activeTooltipIndex)}>
                   <defs>
-                    <linearGradient id="db-gold" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%"   stopColor="#c9973e" stopOpacity={0.50} />
-                      <stop offset="100%" stopColor="#c9973e" stopOpacity={0.00} />
+                    <linearGradient id="dash-gold" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#c9973e" stopOpacity={0.55} />
+                      <stop offset="100%" stopColor="#c9973e" stopOpacity={0} />
                     </linearGradient>
-                    <linearGradient id="db-cyan" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%"   stopColor="#4dd0e1" stopOpacity={0.20} />
-                      <stop offset="100%" stopColor="#4dd0e1" stopOpacity={0.00} />
+                    <linearGradient id="dash-cyan" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#4dd0e1" stopOpacity={0.22} />
+                      <stop offset="100%" stopColor="#4dd0e1" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <XAxis dataKey="hour" stroke="transparent" fontSize={10} tickLine={false} axisLine={false}
                     tick={{ fill: '#4a5a72', fontFamily: 'JetBrains Mono' }} interval={2} />
                   <YAxis stroke="transparent" fontSize={10} tickLine={false} axisLine={false} unit=" kW" domain={[0, 52]}
                     tick={{ fill: '#4a5a72', fontFamily: 'JetBrains Mono' }} />
-                  <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(201,151,62,0.3)', strokeWidth: 1.5, strokeDasharray: '4 4' }} />
-                  <Area type="monotone" dataKey="p90" stroke="rgba(77,208,225,0.3)" strokeWidth={1} fill="url(#db-cyan)" isAnimationActive={false} />
-                  <Area type="monotone" dataKey="expected" stroke="#c9973e" strokeWidth={2.5} fill="url(#db-gold)"
-                    dot={false} activeDot={{ r: 5, fill: '#c9973e', stroke: '#060a14', strokeWidth: 2 }} isAnimationActive={false} />
-                  {chartData[currentHour] && (
-                    <ReferenceLine x={chartData[currentHour]?.hour} stroke="#c9973e" strokeWidth={1.5}
-                      strokeDasharray="4 4" strokeOpacity={0.65}
+                  <Tooltip content={<ChartTooltip />}
+                    cursor={{ stroke: 'rgba(201,151,62,0.35)', strokeWidth: 1.5, strokeDasharray: '4 4' }} />
+                  <Area type="monotone" dataKey="p90" stroke="rgba(77,208,225,0.3)" strokeWidth={1}
+                    fill="url(#dash-cyan)" isAnimationActive={false} />
+                  <Area type="monotone" dataKey="expected" stroke="#c9973e" strokeWidth={2.5}
+                    fill="url(#dash-gold)" dot={false}
+                    activeDot={{ r: 5, fill: '#c9973e', stroke: '#060a14', strokeWidth: 2 }}
+                    isAnimationActive={demoMode} />
+                  {chartData[activeHour] && (
+                    <ReferenceLine x={chartData[activeHour]?.hour} stroke="#c9973e" strokeWidth={1.5}
+                      strokeDasharray="4 4" strokeOpacity={0.7}
                       label={{ value: '▼', fill: '#c9973e', fontSize: 10, position: 'top' }} />
                   )}
                 </AreaChart>
@@ -289,42 +417,37 @@ const Dashboard = ({
         </div>
 
         {/* ── ROW 3B: Gauge Cluster (4 col) ── */}
-        <div className="col-span-12 lg:col-span-4 h-[380px]">
-          <div className="data-card rounded-xl2 p-5 h-full flex flex-col">
-            <div className="pb-2 mb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="col-span-12 lg:col-span-4">
+          <div className="data-card rounded-xl2 p-5 h-[370px] flex flex-col">
+            <div className="pb-2 mb-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
               <div className="label-uppercase mb-1">Kinematic Gauge Cluster</div>
-              <span className="text-jade font-mono font-semibold text-2xs">RTU 1.0 Hz Feed</span>
+              <span className="text-jade font-mono font-semibold text-2xs">RTU · 1.0 Hz Telemetry Feed</span>
             </div>
-
             <div className="flex-1 flex flex-col justify-evenly">
-              {/* Gauges */}
               <div className="flex items-center justify-around py-2">
-                <SemicircleGauge label="Solar GHI"   value={currentHourData.irradiance || 540} max={1000} unit="W/m²" color="#c9973e" />
-                <SemicircleGauge label="Cell Temp"   value={currentHourData.panelTemp  || 52}  max={75}   unit="°C"   color="#4dd0e1" />
-                <SemicircleGauge label="Battery SOC" value={84}                               max={100}  unit="%"    color="#2dd4a8" />
+                <Gauge label="Solar GHI"   value={activeData.irradiance || 540} max={1000} unit="W/m²" color="#c9973e" />
+                <Gauge label="Cell Temp"   value={activeData.panelTemp  || 52}  max={75}   unit="°C"   color="#4dd0e1" />
+                <Gauge label="BESS SOC"    value={84}                           max={100}  unit="%"    color="#2dd4a8" />
               </div>
-
-              {/* Telemetry Rows */}
               <div className="space-y-2">
                 {[
-                  { label: 'Active Power',    value: `${currentHourData.predictedKW || 8.37} kW`, color: '#c9973e' },
-                  { label: 'DC Bus Voltage',  value: '641.2 V',  color: '#4dd0e1' },
-                  { label: 'String Current',  value: '13.05 A',  color: '#2dd4a8' },
-                  { label: 'Grid Frequency',  value: '49.98 Hz', color: '#c9973e' },
-                ].map(({ label, value, color }) => (
-                  <div key={label}
-                    className="flex items-center justify-between py-1.5 px-3 rounded-lg"
+                  { l: 'Active Power',   v: `${activePower} kW`,      c: '#c9973e' },
+                  { l: 'DC Bus Voltage', v: '641.2 V',                c: '#4dd0e1' },
+                  { l: 'String Current', v: '13.05 A',                c: '#2dd4a8' },
+                  { l: 'Grid Frequency', v: '49.98 Hz',               c: '#c9973e' },
+                ].map(({ l, v, c }) => (
+                  <div key={l} className="flex items-center justify-between py-1.5 px-3 rounded-lg"
                     style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.04)' }}>
-                    <span className="text-2xs text-text-muted font-mono">{label}</span>
-                    <span className="font-mono font-bold text-xs" style={{ color }}>{value}</span>
+                    <span className="text-2xs text-text-muted font-mono">{l}</span>
+                    <span className="font-mono font-bold text-xs" style={{ color: c }}>{v}</span>
                   </div>
                 ))}
               </div>
             </div>
-
-            <div className="pt-2 mt-2 flex items-center justify-between" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-              <span className="text-3xs text-text-dim font-mono">NOCT Derated Model</span>
-              <span className="text-jade font-mono font-bold text-3xs">Zero Grid Droop</span>
+            <div className="pt-2 mt-1 flex items-center justify-between"
+              style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+              <span className="text-3xs text-text-dim font-mono">NOCT Thermal Model</span>
+              <span className="text-jade font-mono font-bold text-3xs">Zero Droop</span>
             </div>
           </div>
         </div>
@@ -332,132 +455,138 @@ const Dashboard = ({
         {/* ── ROW 4A: Feature Importance ── */}
         <div className="col-span-12 lg:col-span-6">
           <div className="data-card rounded-xl2 p-5 h-full">
-            <div className="flex items-center justify-between mb-4 pb-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+            <div className="flex items-center justify-between mb-4 pb-3"
+              style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
               <div>
                 <div className="label-uppercase mb-1">XGBoost Feature Importance</div>
-                <span className="font-mono font-bold text-gold">R² = 0.9989</span>
+                <span className="font-mono font-bold text-gold text-sm">R² = 0.9989</span>
               </div>
               <span className="badge-jade flex items-center gap-1.5">
-                <Activity size={10} /> Sub-12ms Engine
+                <Activity size={10} />Sub-12ms
               </span>
             </div>
-
             <div className="space-y-3.5">
-              {featureImportance.map((item, idx) => {
-                const colors = ['#c9973e', '#4dd0e1', '#2dd4a8', '#a78bfa', '#e5484d'];
-                const c = colors[idx];
-                return (
-                  <div key={item.label}>
-                    <div className="flex items-center justify-between mb-1.5 text-2xs">
-                      <span className="text-text-secondary font-medium">{item.label}</span>
-                      <span className="font-mono font-bold" style={{ color: c }}>{item.value}%</span>
-                    </div>
-                    <div className="w-full h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                      <div className="h-full rounded-full transition-all duration-700"
-                        style={{ width: `${item.value}%`, background: c, boxShadow: `0 0 8px ${c}50` }} />
-                    </div>
+              {featureImportance.map((item) => (
+                <div key={item.label}>
+                  <div className="flex items-center justify-between mb-1.5 text-2xs">
+                    <span className="text-text-secondary font-medium">{item.label}</span>
+                    <span className="font-mono font-bold" style={{ color: item.color }}>{item.value}%</span>
                   </div>
-                );
-              })}
+                  <div className="w-full h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                    <motion.div
+                      className="h-full rounded-full"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${item.value}%` }}
+                      transition={{ duration: 1.0, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                      style={{ background: item.color, boxShadow: `0 0 10px ${item.color}50` }}
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
-
-            <div className="mt-4 pt-3 flex items-center gap-3" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+            <div className="mt-4 pt-3 flex items-center gap-3"
+              style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold opacity-60" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-gold" />
               </span>
-              <span className="text-2xs font-mono text-gold/75 tracking-wider">SUB-12MS SCADA ENGINE · ACTIVE</span>
+              <span className="text-2xs font-mono text-gold/75 tracking-wider uppercase">Sub-12ms SCADA Engine · Active</span>
               <span className="text-2xs text-text-dim font-mono ml-auto">48.0 kW Nominal</span>
             </div>
           </div>
         </div>
 
         {/* ── ROW 4B: Anomaly Audit Feed ── */}
-        <div className="col-span-12 lg:col-span-6">
+        <div className="col-span-12 lg:col-span-6" data-tour="anomaly-row">
           <div className="data-card rounded-xl2 p-5 h-full flex flex-col">
-            <div className="flex items-center justify-between mb-4 pb-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+            <div className="flex items-center justify-between mb-4 pb-3"
+              style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
               <div>
                 <div className="label-uppercase mb-1">Live SCADA Anomaly Audit</div>
-                <span className="text-2xs text-text-muted font-mono">Firestore Real-Time Stream</span>
+                <span className="text-2xs text-text-muted font-mono">Firebase Real-Time Stream</span>
               </div>
               <span className="badge-cyan">12ms Response</span>
             </div>
-
-            <div className="flex-1 space-y-2 overflow-y-auto">
+            <div className="flex-1 space-y-2">
               {anomalies.map((a, i) => {
-                const s = severityStyle(a.severity);
+                const s = sevStyle(a.severity);
                 return (
-                  <div key={i}
+                  <motion.div key={i}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.5 + i * 0.1 }}
                     className="flex items-center gap-2 py-2 px-3 rounded-xl"
-                    style={{ background: s.bg, border: `1px solid ${s.border}` }}>
+                    style={{ background: s.bg, border: `1px solid ${s.b}` }}>
                     <span className="font-mono text-2xs text-text-muted w-14 shrink-0">{a.time}</span>
-                    <span className="font-mono font-semibold text-2xs shrink-0" style={{ color: s.color }}>{a.string}</span>
+                    <span className="font-mono font-semibold text-2xs shrink-0" style={{ color: s.c }}>{a.string}</span>
                     <span className="text-2xs text-text-secondary flex-1 truncate">{a.issue}</span>
                     <span className="font-mono font-bold text-3xs px-2 py-0.5 rounded-full shrink-0"
-                      style={{ color: s.color, background: s.bg, border: `1px solid ${s.border}` }}>
+                      style={{ color: s.c, background: s.bg, border: `1px solid ${s.b}` }}>
                       {a.severity}
                     </span>
-                  </div>
+                  </motion.div>
                 );
               })}
             </div>
-
-            <div className="pt-2 mt-3 text-2xs text-text-dim font-mono" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-              Auto-isolation: &lt;12ms solid-state DC trip · BESS dispatch on detect
+            <div className="pt-2 mt-3 text-2xs text-text-dim font-mono"
+              style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+              Auto-isolation: &lt;12ms solid-state DC breaker · BESS dispatch on detect
             </div>
           </div>
         </div>
 
         {/* ── ROW 5: String Health Heatmap ── */}
-        <div className="col-span-12">
+        <div className="col-span-12" data-tour="heatmap-row">
           <div className="data-card rounded-xl2 p-5">
-            <div className="flex items-center justify-between mb-4 pb-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+            <div className="flex items-center justify-between mb-4 pb-3"
+              style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
               <div>
-                <div className="label-uppercase mb-1">32-Module String Health Heatmap (4×8 Array)</div>
-                <span className="text-jade font-mono font-semibold text-2xs">32/32 Online · 98.4% Net Yield Factor</span>
+                <div className="label-uppercase mb-1">32-Module String Health Heatmap · 4×8 Array</div>
+                <span className="text-jade font-mono font-semibold text-2xs">
+                  {32 - Object.keys(faultedPanels).length}/32 Online · 98.4% Net Yield Factor
+                </span>
               </div>
               <span className="badge-gold">Click to Inspect</span>
             </div>
-
             <div className="grid grid-cols-8 gap-2">
               {Array.from({ length: 32 }, (_, idx) => {
-                const id = idx + 1;
+                const id   = idx + 1;
                 const fault = faultedPanels[id];
                 const isFault = fault === 'Offline';
                 const isWarn  = fault === 'Underperforming';
-                let bg = 'rgba(45,212,168,0.10)';
-                let border = 'rgba(45,212,168,0.22)';
-                let textColor = '#2dd4a8';
-                let glow = '';
-                if (isFault) { bg = 'rgba(229,72,77,0.12)'; border = 'rgba(229,72,77,0.30)'; textColor = '#e5484d'; glow = '0 0 10px rgba(229,72,77,0.30)'; }
-                if (isWarn)  { bg = 'rgba(201,151,62,0.12)'; border = 'rgba(201,151,62,0.30)'; textColor = '#c9973e'; glow = '0 0 10px rgba(201,151,62,0.25)'; }
-
+                let bg = 'rgba(45,212,168,0.10)', border = 'rgba(45,212,168,0.22)', tc = '#2dd4a8', glow = '';
+                if (isFault) { bg = 'rgba(229,72,77,0.14)'; border = 'rgba(229,72,77,0.30)'; tc = '#e5484d'; glow = '0 0 10px rgba(229,72,77,0.30)'; }
+                if (isWarn)  { bg = 'rgba(201,151,62,0.14)'; border = 'rgba(201,151,62,0.28)'; tc = '#c9973e'; glow = '0 0 8px rgba(201,151,62,0.25)'; }
                 return (
-                  <motion.div
-                    key={id}
-                    whileHover={{ scale: 1.08, transition: { duration: 0.15 } }}
+                  <motion.div key={id}
+                    whileHover={{ scale: 1.10, transition: { duration: 0.15 } }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => onSelectPanel?.(id)}
-                    className="h-9 rounded-lg flex items-center justify-center cursor-pointer transition-colors"
+                    className="h-10 rounded-lg flex items-center justify-center cursor-pointer"
                     style={{ background: bg, border: `1px solid ${border}`, boxShadow: glow }}
                     title={`Module A-${id}: ${fault || 'Nominal (100%)'}`}
                   >
-                    <span className="text-3xs font-mono font-bold" style={{ color: textColor }}>{id}</span>
+                    <span className="text-3xs font-mono font-bold" style={{ color: tc }}>{id}</span>
                   </motion.div>
                 );
               })}
             </div>
-
             <div className="mt-4 flex items-center justify-between flex-wrap gap-2 pt-2"
               style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
               <div className="flex items-center gap-5 text-2xs text-text-secondary font-mono">
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-jade/40 border border-jade/30" /> Nominal</span>
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-gold/40 border border-gold/30" /> Underperforming</span>
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-crimson/40 border border-crimson/30" /> Fault/Isolated</span>
+                {[['Nominal', 'rgba(45,212,168,0.35)', 'rgba(45,212,168,0.40)'],
+                  ['Underperforming', 'rgba(201,151,62,0.35)', 'rgba(201,151,62,0.40)'],
+                  ['Fault/Isolated', 'rgba(229,72,77,0.35)', 'rgba(229,72,77,0.40)']].map(([l, bg, b]) => (
+                  <span key={l} className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded" style={{ background: bg, border: `1px solid ${b}` }} />{l}
+                  </span>
+                ))}
               </div>
-              <span className="text-3xs text-text-dim font-mono">Click module to open telemetry inspector</span>
+              <span className="text-3xs text-text-dim font-mono">Click module → open telemetry inspector</span>
             </div>
           </div>
         </div>
+
       </motion.div>
     </div>
   );

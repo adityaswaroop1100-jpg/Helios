@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Sun, Box, LayoutGrid, BarChart2, Clock, HelpCircle, LayoutDashboard, MapPin, Building2, Flame } from 'lucide-react';
+import { Sun, Box, LayoutGrid, BarChart2, Clock, HelpCircle, LayoutDashboard, MapPin, Building2, Flame, Play, Square, Maximize2 } from 'lucide-react';
 import {
   generate24HourForecast,
   calculatePanelOutputs,
@@ -17,6 +17,8 @@ import HistorianView from './components/dashboard/HistorianView';
 import Solar3DScene from './components/3d/Solar3DScene';
 import SceneControls from './components/3d/SceneControls';
 import OnboardingModal from './components/onboarding/OnboardingModal';
+import SplashScreen from './components/onboarding/SplashScreen';
+import { ToastProvider, toast } from './components/ui/Toast';
 import EnergyComputePanel from './components/dashboard/EnergyComputePanel';
 import LocationModal from './components/dashboard/LocationModal';
 import ControlRoomInterior3D from './components/3d/ControlRoomInterior3D';
@@ -35,6 +37,9 @@ function getCityLocalTime(location) {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [splashDone, setSplashDone] = useState(false);
+  const [demoMode, setDemoMode] = useState(false);
+  const [dashTourStep, setDashTourStep] = useState(null);
   const [location, setLocation] = useState(() => {
     try {
       const saved = localStorage.getItem('helios_location');
@@ -47,6 +52,24 @@ export default function App() {
   const [showControlRoomModal, setShowControlRoomModal] = useState(false);
   const [meteoData, setMeteoData] = useState(null);
   const [hourlyData, setHourlyData] = useState(() => generate24HourForecast());
+
+  const handleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  }, []);
+
+  const handleToggleDemo = useCallback(() => {
+    setDemoMode(prev => !prev);
+  }, []);
+
+  const handleStartDashTour = useCallback(() => {
+    setActiveTab('dashboard');
+    setDashTourStep(0);
+  }, []);
+
 
   // Fetch Open-Meteo weather whenever location changes
   const loadMeteo = useCallback(async () => {
@@ -360,6 +383,12 @@ export default function App() {
 
   return (
     <div className="min-h-screen text-text-primary font-sans flex flex-col antialiased selection:bg-gold/25 selection:text-text-primary">
+      {/* ── Cinematic Splash ── */}
+      {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
+
+      {/* ── Toast Notifications ── */}
+      <ToastProvider />
+
       <OnboardingModal
         isOpen={showOnboarding}
         onClose={() => setShowOnboarding(false)}
@@ -382,8 +411,8 @@ export default function App() {
       />
 
       {/* ── Premium Floating Glass Header ─────────────────────────────────── */}
-      <header className="sticky top-0 z-50 glass-premium border-b border-white/[0.06] shadow-[0_4px_32px_rgba(0,0,0,0.8)]" style={{ position: 'relative' }}>
-        {/* Glint accent line */}
+      <header className="sticky top-0 z-50 glass-premium shadow-[0_4px_32px_rgba(0,0,0,0.8)]" style={{ position: 'relative' }}>
+        {/* Gold glint accent line */}
         <div className="absolute bottom-0 left-0 right-0 h-px"
           style={{ background: 'linear-gradient(90deg,transparent,rgba(201,151,62,0.4) 30%,rgba(201,151,62,0.8) 50%,rgba(201,151,62,0.4) 70%,transparent)' }} />
 
@@ -399,7 +428,7 @@ export default function App() {
 
             <div>
               <div className="flex items-center gap-2.5">
-                <span className="font-display font-bold text-base tracking-widest text-text-primary" style={{ letterSpacing: '0.18em' }}>HELIOS</span>
+                <span className="font-bold text-base text-text-primary" style={{ letterSpacing: '0.18em' }}>HELIOS</span>
                 <span className="text-2xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 font-mono"
                   style={{ background: 'rgba(45,212,168,0.12)', color: '#2dd4a8', border: '1px solid rgba(45,212,168,0.28)' }}>
                   <span className="relative flex h-1.5 w-1.5">
@@ -409,9 +438,8 @@ export default function App() {
                   LIVE SCADA
                 </span>
               </div>
-
               <div className="text-2xs text-text-secondary font-medium hidden sm:flex items-center gap-2 mt-0.5">
-                <span className="text-text-muted">48.0 kW Utility Array</span>
+                <span className="text-text-muted">48.0 kW</span>
                 <span className="text-text-muted">·</span>
                 <button onClick={() => setShowLocationModal(true)}
                   className="flex items-center gap-1.5 text-cyan hover:text-cyan/80 font-semibold transition-colors"
@@ -427,22 +455,54 @@ export default function App() {
           {/* ── Right: Controls ── */}
           <div className="flex items-center gap-2 sm:gap-2.5">
 
-            {/* Control Room button */}
+            {/* 🚀 Auto-Demo Toggle */}
+            <button
+              onClick={handleToggleDemo}
+              title={demoMode ? 'Exit Auto-Demo mode' : 'Start Auto-Demo for judges'}
+              className="h-9 px-3.5 flex items-center gap-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
+              style={demoMode
+                ? { background: 'rgba(229,72,77,0.18)', color: '#e5484d', border: '1px solid rgba(229,72,77,0.35)', boxShadow: '0 0 16px rgba(229,72,77,0.15)' }
+                : { background: 'rgba(201,151,62,0.12)', color: '#c9973e', border: '1px solid rgba(201,151,62,0.28)' }}>
+              {demoMode ? <Square size={12} /> : <Play size={12} />}
+              <span className="hidden sm:inline">{demoMode ? 'Stop' : '🚀 Demo'}</span>
+            </button>
+
+            {/* Guided Tour */}
+            <button
+              onClick={handleStartDashTour}
+              className="h-9 px-3 flex items-center gap-1.5 rounded-xl text-xs font-bold transition-all"
+              title="Start guided dashboard tour"
+              style={{ background: 'rgba(77,208,225,0.10)', color: '#4dd0e1', border: '1px solid rgba(77,208,225,0.22)' }}>
+              <HelpCircle size={13} />
+              <span className="hidden md:inline">Tour</span>
+            </button>
+
+            {/* Fullscreen */}
+            <button
+              onClick={handleFullscreen}
+              className="h-9 px-3 flex items-center gap-1.5 rounded-xl text-xs font-semibold transition-all glass-premium border border-white/10 text-text-secondary hover:text-white"
+              title="Fullscreen Presentation Mode">
+              <Maximize2 size={13} />
+              <span className="hidden md:inline">Present</span>
+            </button>
+
+            <div className="h-6 w-px bg-white/10 hidden sm:block" />
+
+            {/* Control Room */}
             <button onClick={() => setShowControlRoomModal(true)}
-              className="h-9 px-3.5 flex items-center gap-1.5 rounded-xl text-xs font-semibold transition-all border border-cyan/30 text-cyan hover:bg-cyan/10 hover:text-white"
-              title="Open 3D SCADA NOC Control Center">
+              className="h-9 px-3.5 flex items-center gap-1.5 rounded-xl text-xs font-semibold transition-all border border-cyan/30 text-cyan hover:bg-cyan/10"
+              title="Open 3D SCADA NOC">
               <Building2 size={13} className="text-jade" />
               <span className="hidden md:inline">Control Room</span>
             </button>
 
-            {/* Divider */}
             <div className="h-6 w-px bg-white/10 hidden sm:block" />
 
             {/* Tracking toggle */}
             <div className="flex items-center p-1 rounded-xl gap-0.5 bg-carbon border border-white/[0.06]">
-              {[['fixed', 'Fixed'], ['tracking', '⚡ Tracking']].map(([key, label]) => (
+              {[['fixed', 'Fixed'], ['tracking', '⚡ Track']].map(([key, label]) => (
                 <button key={key} onClick={() => setTrackingMode(key)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                  className="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all"
                   style={trackingMode === key
                     ? { color: '#c9973e', background: 'rgba(201,151,62,0.18)', boxShadow: '0 0 12px rgba(201,151,62,0.15)' }
                     : { color: '#7a8ba3' }}>
@@ -457,7 +517,7 @@ export default function App() {
                 ['dashboard', LayoutDashboard, 'Dashboard'],
                 ['3d', Box, '3D Twin'],
                 ['2d', BarChart2, 'Forecast'],
-                ['firebase', Flame, 'Firebase Sync'],
+                ['firebase', Flame, 'Firebase'],
                 ['split', LayoutGrid, 'Split'],
               ].map(([key, Icon, label]) => (
                 <button key={key} onClick={() => setActiveTab(key)}
@@ -465,12 +525,11 @@ export default function App() {
                   style={activeTab === key
                     ? { color: '#c9973e', background: 'rgba(201,151,62,0.18)', boxShadow: '0 0 12px rgba(201,151,62,0.15)' }
                     : { color: '#7a8ba3' }}>
-                  <Icon size={13} /><span>{label}</span>
+                  <Icon size={13} /><span className="hidden lg:inline">{label}</span>
                 </button>
               ))}
             </div>
 
-            {/* Divider */}
             <div className="h-6 w-px bg-white/10 hidden sm:block" />
 
             {/* Live clock toggle */}
@@ -481,14 +540,6 @@ export default function App() {
                 : { background: 'rgba(6,10,20,0.8)', color: '#7a8ba3', border: '1px solid rgba(255,255,255,0.07)' }}>
               <Clock size={13} />
               <span className="hidden sm:inline">{isLiveClock ? 'Live' : 'Manual'}</span>
-            </button>
-
-            {/* Tour button */}
-            <button onClick={handleStartTour}
-              className="h-9 px-3 flex items-center gap-1.5 rounded-xl text-xs font-bold glass-premium border border-white/10 text-text-secondary hover:text-white transition-all"
-              title="Start guided 3D farm tour">
-              <HelpCircle size={13} />
-              <span className="hidden md:inline">Tour</span>
             </button>
           </div>
         </div>
@@ -505,6 +556,10 @@ export default function App() {
             faultedPanels={faultedPanels}
             onSelectPanel={id => setSelectedPanel(id)}
             location={location}
+            demoMode={demoMode}
+            tourStep={dashTourStep}
+            onTourNext={() => setDashTourStep(prev => prev !== null && prev < 3 ? prev + 1 : null)}
+            onTourSkip={() => setDashTourStep(null)}
           />
         )}
 
