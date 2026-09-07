@@ -1,183 +1,139 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sun, Zap } from 'lucide-react';
+import { Sun } from 'lucide-react';
 
 const STATS = [
-  { value: '$17K', label: 'Annual Savings' },
-  { value: '66.9T', label: 'CO₂ Avoided' },
-  { value: '99.89%', label: 'ML Accuracy' },
-  { value: '<12ms', label: 'Edge Response' },
+  { value: '$17K/yr', label: 'Grid Savings', color: '#c9973e' },
+  { value: '66.9 T',  label: 'CO₂ Avoided', color: '#2dd4a8' },
+  { value: '99.89%',  label: 'ML Accuracy',  color: '#4dd0e1' },
+  { value: '<12 ms',  label: 'Edge Response',color: '#c9973e' },
 ];
 
 export default function SplashScreen({ onDone }) {
-  const [phase, setPhase] = useState('logo'); // logo → stats → out
+  const [visible, setVisible] = useState(true);
 
+  // Hard dismiss after 2.2 seconds — no dependencies on animation state
   useEffect(() => {
-    const t1 = setTimeout(() => setPhase('stats'), 1100);
-    const t2 = setTimeout(() => setPhase('out'), 2400);
-    const t3 = setTimeout(() => onDone(), 3000);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-  }, [onDone]);
+    const t = setTimeout(() => {
+      setVisible(false);
+      // Give exit animation 400ms then call onDone
+      setTimeout(onDone, 420);
+    }, 2200);
+    return () => clearTimeout(t);
+  }, []); // eslint-disable-line
+
+  const dismiss = () => {
+    setVisible(false);
+    setTimeout(onDone, 420);
+  };
 
   return (
     <AnimatePresence>
-      {phase !== 'out' && (
+      {visible && (
         <motion.div
           key="splash"
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0, scale: 1.04, transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] } }}
-          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center"
+          animate={{ opacity: 1, transition: { duration: 0.4 } }}
+          exit={{ opacity: 0, transition: { duration: 0.35 } }}
+          onClick={dismiss}
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center cursor-pointer"
           style={{
-            background: 'radial-gradient(ellipse at 40% 30%, rgba(201,151,62,0.10) 0%, transparent 60%), radial-gradient(ellipse at 70% 80%, rgba(77,208,225,0.07) 0%, transparent 55%), #060a14',
+            background: '#060a14',
+            backgroundImage: [
+              'radial-gradient(ellipse 70% 50% at 30% 20%, rgba(201,151,62,0.10) 0%, transparent 60%)',
+              'radial-gradient(ellipse 60% 40% at 75% 80%, rgba(77,208,225,0.07) 0%, transparent 55%)',
+            ].join(','),
           }}
         >
-          {/* Animated grid background */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <motion.div
-                key={i}
-                className="absolute left-0 right-0 h-px"
-                style={{ top: `${(i + 1) * 12.5}%`, background: 'rgba(255,255,255,0.025)' }}
-                initial={{ scaleX: 0 }}
-                animate={{ scaleX: 1 }}
-                transition={{ delay: i * 0.06, duration: 0.8, ease: 'easeOut' }}
-              />
-            ))}
-            {Array.from({ length: 6 }).map((_, i) => (
-              <motion.div
-                key={i}
-                className="absolute top-0 bottom-0 w-px"
-                style={{ left: `${(i + 1) * 16.66}%`, background: 'rgba(255,255,255,0.025)' }}
-                initial={{ scaleY: 0 }}
-                animate={{ scaleY: 1 }}
-                transition={{ delay: i * 0.06, duration: 0.8, ease: 'easeOut' }}
-              />
-            ))}
-          </div>
-
-          {/* Logo cluster */}
+          {/* Logo */}
           <motion.div
-            className="flex flex-col items-center text-center relative z-10"
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            className="flex flex-col items-center text-center"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] } }}
           >
-            {/* Icon */}
+            {/* Sun icon */}
             <div className="relative mb-6">
               <motion.div
                 className="w-20 h-20 rounded-2xl flex items-center justify-center"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(201,151,62,0.22), rgba(77,208,225,0.16))',
-                  border: '1px solid rgba(201,151,62,0.45)',
-                  boxShadow: '0 0 60px rgba(201,151,62,0.25), 0 0 120px rgba(201,151,62,0.10)',
+                  background: 'linear-gradient(135deg, rgba(201,151,62,0.20), rgba(77,208,225,0.14))',
+                  border: '1px solid rgba(201,151,62,0.40)',
+                  boxShadow: '0 0 60px rgba(201,151,62,0.22), 0 0 120px rgba(201,151,62,0.08)',
                 }}
                 animate={{ rotate: 360 }}
-                transition={{ duration: 12, repeat: Infinity, ease: 'linear' }}
+                transition={{ duration: 14, repeat: Infinity, ease: 'linear' }}
               >
-                <Sun size={36} style={{ color: '#c9973e' }} />
+                <Sun size={38} style={{ color: '#c9973e' }} />
               </motion.div>
-              {/* Orbit ring */}
-              <motion.div
-                className="absolute inset-0 rounded-2xl"
-                style={{ border: '1px solid rgba(77,208,225,0.25)' }}
-                animate={{ scale: [1, 1.15, 1] }}
-                transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
-              />
             </div>
 
-            {/* Brand name */}
-            <motion.h1
-              className="text-7xl font-bold tracking-[0.25em] mb-2"
+            {/* Brand */}
+            <h1
+              className="text-6xl font-bold mb-2"
               style={{
+                letterSpacing: '0.22em',
                 fontFamily: '"Plus Jakarta Sans", sans-serif',
-                background: 'linear-gradient(90deg, #c9973e 0%, #dbb060 40%, #4dd0e1 100%)',
+                background: 'linear-gradient(90deg, #c9973e 0%, #dbb060 45%, #4dd0e1 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
               }}
             >
               HELIOS
-            </motion.h1>
+            </h1>
 
-            <motion.p
-              className="text-text-secondary font-mono text-sm tracking-[0.20em] uppercase mb-1"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4, duration: 0.6 }}
-            >
+            <p className="text-sm font-mono tracking-[0.22em] uppercase mb-2"
+              style={{ color: '#7a8ba3' }}>
               Autonomous Solar Intelligence
-            </motion.p>
+            </p>
 
-            <motion.div
-              className="flex items-center gap-2 mt-2"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6, duration: 0.5 }}
-            >
-              <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-2xs font-mono font-bold"
-                style={{ background: 'rgba(45,212,168,0.12)', color: '#2dd4a8', border: '1px solid rgba(45,212,168,0.30)' }}>
+            {/* Live badge */}
+            <div className="flex items-center gap-2 mt-1">
+              <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold"
+                style={{ background: 'rgba(45,212,168,0.12)', color: '#2dd4a8', border: '1px solid rgba(45,212,168,0.28)' }}>
                 <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-jade opacity-75" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-jade" />
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+                    style={{ background: '#2dd4a8' }} />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5"
+                    style={{ background: '#2dd4a8' }} />
                 </span>
                 LIVE SCADA
               </span>
-              <span className="text-text-muted font-mono text-2xs">·</span>
-              <span className="text-text-muted font-mono text-2xs">48 kW · Chengalpattu, India</span>
-            </motion.div>
+              <span className="text-xs font-mono" style={{ color: '#4a5a72' }}>· 48 kW · Chengalpattu, India</span>
+            </div>
           </motion.div>
 
-          {/* Stats row */}
-          <AnimatePresence>
-            {phase === 'stats' && (
-              <motion.div
-                className="flex items-center gap-6 mt-12 relative z-10"
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.5, ease: 'easeOut' }}
-              >
-                {STATS.map((s, i) => (
-                  <motion.div
-                    key={s.label}
-                    className="text-center px-5 py-3 rounded-xl"
-                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.08, duration: 0.4 }}
-                  >
-                    <div className="font-mono font-bold text-xl" style={{ color: i === 0 ? '#c9973e' : i === 1 ? '#2dd4a8' : i === 2 ? '#4dd0e1' : '#c9973e' }}>
-                      {s.value}
-                    </div>
-                    <div className="text-2xs text-text-muted font-mono mt-0.5 uppercase tracking-wider">{s.label}</div>
-                  </motion.div>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Loading bar */}
+          {/* Stats */}
           <motion.div
-            className="absolute bottom-12 left-1/2 -translate-x-1/2 w-48 h-0.5 rounded-full overflow-hidden"
-            style={{ background: 'rgba(255,255,255,0.07)' }}
+            className="flex items-center gap-4 mt-10"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0, transition: { delay: 0.55, duration: 0.45 } }}
+          >
+            {STATS.map((s) => (
+              <div key={s.label}
+                className="text-center px-4 py-3 rounded-xl"
+                style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div className="font-mono font-bold text-lg" style={{ color: s.color }}>{s.value}</div>
+                <div className="text-xs font-mono mt-0.5 uppercase tracking-wider" style={{ color: '#4a5a72' }}>{s.label}</div>
+              </div>
+            ))}
+          </motion.div>
+
+          {/* Progress bar */}
+          <motion.div
+            className="absolute bottom-10 left-1/2 -translate-x-1/2 w-40 h-0.5 rounded-full overflow-hidden"
+            style={{ background: 'rgba(255,255,255,0.06)' }}
           >
             <motion.div
               className="h-full rounded-full"
               style={{ background: 'linear-gradient(90deg, #c9973e, #4dd0e1)' }}
               initial={{ width: '0%' }}
-              animate={{ width: '100%' }}
-              transition={{ duration: 2.4, ease: 'easeInOut' }}
+              animate={{ width: '100%', transition: { duration: 2.1, ease: 'easeInOut' } }}
             />
           </motion.div>
 
-          <motion.p
-            className="absolute bottom-6 text-text-muted font-mono text-3xs tracking-wider"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.6 }}
-            transition={{ delay: 0.5 }}
-          >
-            ORION 1.0 · IEC 61724 Compliant · IEEE 1547
-          </motion.p>
+          <p className="absolute bottom-5 font-mono text-xs" style={{ color: '#2e3f55' }}>
+            Click anywhere to continue · ORION 1.0
+          </p>
         </motion.div>
       )}
     </AnimatePresence>
